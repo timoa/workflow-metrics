@@ -1,0 +1,63 @@
+---
+description: Cloudflare Pages deployment, environment variables, and wrangler configuration
+globs: wrangler.toml,svelte.config.js,vite.config.ts
+alwaysApply: false
+---
+
+# Deployment – Cloudflare Pages
+
+## Adapter
+
+Use `@sveltejs/adapter-cloudflare` – already configured in `svelte.config.js`. Do not switch adapters.
+
+## Environment Variables
+
+| Variable | Visibility | Set via |
+|---|---|---|
+| `PUBLIC_SUPABASE_URL` | Public | Cloudflare Pages dashboard → Environment variables |
+| `PUBLIC_SUPABASE_ANON_KEY` | Public | Cloudflare Pages dashboard |
+| `SUPABASE_SERVICE_ROLE_KEY` | Secret | Cloudflare Pages dashboard → Encrypted |
+
+- **Never** commit `.env` files with real secrets to the repository
+- Provide a `.env.example` with placeholder values and document all variables in the README
+- Local development: copy `.env.example` to `.env` and fill in values
+
+## Wrangler
+
+`wrangler.toml` contains project name and compatibility settings only. Secrets are not stored there.
+
+```bash
+# Deploy to production
+pnpm build && wrangler pages deploy .svelte-kit/cloudflare
+
+# Local preview with Cloudflare bindings
+wrangler pages dev --compatibility-date=2024-01-01
+```
+
+## Compatibility
+
+- Set `compatibility_date` in `wrangler.toml` to a recent stable date
+- Set `compatibility_flags = ["nodejs_compat"]` if any dependency requires Node-compatible APIs (check first; prefer avoiding Node-specific code)
+- All server code must be compatible with the Cloudflare Workers runtime (Web APIs only)
+
+## Build Checklist Before Deploy
+
+```bash
+pnpm check          # Type-check and svelte-check
+pnpm lint           # ESLint
+pnpm test:run       # Unit tests
+pnpm audit --audit-level=high  # Dependency vulnerabilities
+pnpm build          # Verify build succeeds
+```
+
+## Cloudflare Pages Settings
+
+- **Build command**: `pnpm build`
+- **Build output directory**: `.svelte-kit/cloudflare`
+- **Node.js version**: 20.x
+- **Root directory**: `/` (repo root)
+
+## Supabase Configuration
+
+- Add Cloudflare Pages production URL to Supabase Auth → URL Configuration → Site URL and Redirect URLs
+- GitHub OAuth app must include the Cloudflare Pages URL in "Authorization callback URL"

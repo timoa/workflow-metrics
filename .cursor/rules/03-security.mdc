@@ -1,0 +1,82 @@
+---
+description: Security practices – secrets, RLS, dependencies, OpenSSF Scorecard compliance
+alwaysApply: true
+---
+
+# Security
+
+## Secrets – Never Expose Server-Side Keys
+
+| Variable | Where allowed |
+|---|---|
+| `PUBLIC_SUPABASE_URL` | Client + server |
+| `PUBLIC_SUPABASE_ANON_KEY` | Client + server |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server-only (`$server/`, `+page.server.ts`, `+server.ts`) |
+| `MISTRAL_API_KEY` (user-provided) | Server-only, read from DB then used in `/api/optimize` |
+| GitHub `access_token` | Server-only, never serialized to client |
+
+- Never import `$server/*` modules in `+page.svelte`, `+page.ts`, or client components
+- Never log access tokens, session tokens, or API keys
+- Mistral API keys are user-owned; fetch from Supabase server-side before each AI call, never cache in memory between requests
+
+## Supabase Row Level Security
+
+- **Always enable RLS** on every table
+- Every policy must scope to `auth.uid() = user_id`
+- Never use the service role key on the client
+- Use `anon` key client-side with RLS enforced
+
+```sql
+-- ✅ Required pattern for every new table
+alter table my_table enable row level security;
+create policy "Users access own rows"
+  on my_table for all using (auth.uid() = user_id);
+```
+
+## Input Validation
+
+- Validate all route params and form inputs server-side before DB/API calls
+- Use TypeScript types + runtime guards for external data (GitHub API responses, form bodies)
+- Never trust `params`, `url.searchParams`, or `request.formData()` without validation
+
+## Content Security
+
+- The `/api/optimize` streaming endpoint must verify the user is authenticated before calling Mistral
+- Rate-limit AI calls per user to prevent abuse (check existing call frequency in DB or add a counter)
+
+## Dependency Security (OpenSSF Scorecard)
+
+- **Pin dependencies**: use exact versions in `package.json` for production deps, or rely on the committed `pnpm-lock.yaml`
+- **Run `pnpm audit`** before every release; block on high/critical vulnerabilities
+- **Update regularly**: run `pnpm outdated` weekly; apply security patches promptly
+- **Minimize dependencies**: prefer built-in Web APIs over third-party packages where practical
+- **SBOM**: when adding a new dependency, verify its license is compatible (MIT, Apache-2.0, ISC preferred)
+
+## CI/CD Security
+
+- GitHub Actions workflows must use **pinned action versions** (SHA hash or exact tag), not `@latest` or `@main`
+- Prefer `permissions: read-all` at workflow top level; grant write only where needed
+- Never print secrets in workflow logs (`run: echo $SECRET` is forbidden)
+- Use `GITHUB_TOKEN` with minimal scopes; do not create long-lived PATs
+
+```yaml
+# ✅ Pinned action + minimal permissions
+permissions:
+  contents: read
+jobs:
+  build:
+    steps:
+      - uses: actions/checkout@v4.2.2  # pinned tag, not @latest
+```
+
+## Authentication Guards
+
+All dashboard routes must redirect unauthenticated users. Check `locals.user` in every `+layout.server.ts` or `+page.server.ts` that serves protected content:
+
+```typescript
+if (!user) redirect(303, '/auth/login');
+```
+
+## GitHub Token Scopes
+
+Request only the minimum OAuth scopes needed: `repo read:org`. Do not request `write:*` or `admin:*` scopes.

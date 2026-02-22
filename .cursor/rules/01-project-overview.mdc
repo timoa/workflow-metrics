@@ -1,0 +1,59 @@
+---
+description: Project overview, stack, and directory structure for workflow-metrics
+alwaysApply: true
+---
+
+# Workflow Metrics – Project Overview
+
+Open-source dashboard for GitHub Actions metrics with AI-powered optimization suggestions.
+
+## Stack
+
+- **Framework**: Svelte 5 + SvelteKit 2
+- **Styling**: TailwindCSS 4 (`@tailwindcss/vite` plugin)
+- **UI**: shadcn-svelte (`bits-ui` primitives) + `lucide-svelte` icons
+- **Charts**: LayerChart
+- **Auth**: Supabase Auth with GitHub OAuth (`@supabase/ssr`)
+- **Database**: Supabase PostgreSQL with RLS
+- **GitHub API**: `@octokit/rest` (server-side only)
+- **AI**: Vercel AI SDK (`ai` + `@ai-sdk/mistral`) with streaming
+- **Deployment**: Cloudflare Pages via `@sveltejs/adapter-cloudflare`
+- **Package Manager**: PNPM only – never use npm or yarn
+
+## Directory Structure
+
+```
+src/
+├── lib/
+│   ├── components/
+│   │   ├── ui/            # shadcn-svelte primitives
+│   │   ├── dashboard/     # Dashboard-specific components
+│   │   └── layout/        # Sidebar, Navbar, ThemeToggle
+│   ├── server/            # Server-only modules (never import in client code)
+│   │   ├── github.ts      # Octokit wrapper
+│   │   ├── supabase.ts    # Supabase server client
+│   │   └── mistral.ts     # Mistral AI logic
+│   ├── types/             # Shared TypeScript types
+│   └── utils.ts           # cn(), date helpers, pure functions
+├── routes/
+│   ├── auth/              # login, callback, logout
+│   ├── onboarding/        # Org/repo selection
+│   ├── dashboard/         # Overview + workflow/[id] detail
+│   ├── settings/          # GitHub accounts, API keys
+│   └── api/optimize/      # Streaming AI endpoint
+└── hooks.server.ts        # Supabase session middleware
+```
+
+## Path Aliases
+
+- `$components` → `src/lib/components`
+- `$server` → `src/lib/server`
+- `$types` → `src/lib/types`
+- `$lib` → `src/lib` (SvelteKit default)
+
+## Principles
+
+- Server-first: load data in `+page.server.ts`, never expose secrets in `+page.svelte`
+- Type-safe: strict TypeScript, no `any`
+- Composable: small, focused components with typed props
+- Accessible: semantic HTML, ARIA where needed

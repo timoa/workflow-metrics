@@ -1,0 +1,76 @@
+---
+description: Svelte 5 and SvelteKit 2 coding patterns
+globs: **/*.svelte,**/*.svelte.ts,**/routes/**/*.ts
+alwaysApply: false
+---
+
+# Svelte 5 + SvelteKit 2 Patterns
+
+## Svelte 5 Runes – Required
+
+Use runes syntax exclusively. The Options API (`export let`, `$:`) is forbidden.
+
+```svelte
+<!-- ✅ Svelte 5 runes -->
+<script lang="ts">
+  let { label, count = 0 }: { label: string; count?: number } = $props();
+  let doubled = $derived(count * 2);
+  let internal = $state(0);
+
+  $effect(() => {
+    console.log('count changed:', count);
+  });
+</script>
+
+<!-- ❌ Old Options API -->
+<script lang="ts">
+  export let label: string;
+  $: doubled = count * 2;
+</script>
+```
+
+## Component Props
+
+- Always destructure with types inline in `$props()`
+- Provide defaults for optional props
+- Use `$bindable()` sparingly, only for form inputs
+
+## SvelteKit Data Loading
+
+- **Server data**: use `+page.server.ts` with typed `load()` functions
+- **Client-only data**: use `+page.ts` only when truly needed
+- Never call GitHub API or Supabase from `+page.svelte`; use load functions
+
+```typescript
+// +page.server.ts
+import type { PageServerLoad } from './$types';
+
+export const load: PageServerLoad = async ({ locals }) => {
+  const { user } = await locals.safeGetSession();
+  if (!user) redirect(303, '/auth/login');
+  return { user };
+};
+```
+
+## Forms & Actions
+
+- Use SvelteKit form actions for mutations (not client-side fetch for simple forms)
+- Validate server-side in `+page.server.ts` actions; add client hints without duplicating rules
+
+## Stores
+
+- Prefer `$state` rune for local component state
+- Use Svelte stores (`writable`, `derived`) for shared/global state in `src/lib/stores/`
+- Do not put stores in `+page.svelte` – extract to `src/lib/stores/`
+
+## Styling
+
+- TailwindCSS utilities only – no inline `style` attributes
+- Use `cn()` from `$lib/utils` for conditional class merging
+- Dark mode via `mode-watcher` + `.dark` class (TailwindCSS 4 `@custom-variant`)
+
+## Performance
+
+- Lazy-load heavy client-only code with dynamic `import()`
+- Use `{#await}` blocks with skeleton placeholders for async data
+- Avoid blocking SSR with client-only APIs

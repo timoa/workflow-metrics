@@ -1,0 +1,87 @@
+---
+description: Testing standards – unit tests with Vitest, integration patterns
+globs: **/*.test.ts,**/*.spec.ts,**/*.test.svelte.ts
+alwaysApply: false
+---
+
+# Testing
+
+## Stack
+
+- **Unit tests**: Vitest (`pnpm test` / `pnpm test:run`)
+- **Component tests**: `@testing-library/svelte` + `@testing-library/jest-dom`
+- **No E2E framework yet**: add Playwright when UI stabilises
+
+## File Location
+
+Co-locate tests next to the module they test:
+```
+src/lib/utils.ts
+src/lib/utils.test.ts
+
+src/lib/server/github.ts
+src/lib/server/github.test.ts
+```
+
+## What to Test
+
+### Always test (critical paths)
+- `src/lib/utils.ts` – `computeDurationMs`, `percentile`, `cn()`, date formatters
+- `src/lib/server/github.ts` – metric computation (`computeWorkflowMetrics`, `buildRunTrend`), data mappers
+- `/api/optimize` – auth guard (unauthenticated → 401, missing API key → 400)
+- Auth callback – token exchange and DB write logic
+
+### Test with mocks
+- Octokit calls: mock at the function boundary, not deep inside `@octokit/rest`
+- Supabase: mock the `supabase` client returned by `locals`
+
+## Patterns
+
+```typescript
+// utils.test.ts
+import { describe, it, expect } from 'vitest';
+import { computeDurationMs, percentile } from './utils';
+
+describe('computeDurationMs', () => {
+  it('returns null when either date is missing', () => {
+    expect(computeDurationMs(null, '2024-01-01T00:01:00Z')).toBeNull();
+  });
+
+  it('computes correct duration', () => {
+    expect(computeDurationMs('2024-01-01T00:00:00Z', '2024-01-01T00:01:30Z')).toBe(90_000);
+  });
+});
+
+describe('percentile', () => {
+  it('returns 0 for empty array', () => {
+    expect(percentile([], 50)).toBe(0);
+  });
+});
+```
+
+## CI Requirements
+
+The following must pass in CI before merging:
+
+```bash
+pnpm check          # svelte-check + tsc
+pnpm lint           # ESLint
+pnpm test:run       # Vitest (non-watch)
+pnpm audit --audit-level=high  # No high/critical vulnerabilities
+```
+
+## Mocking Server Modules
+
+```typescript
+import { vi } from 'vitest';
+
+vi.mock('$server/github', () => ({
+  buildDashboardData: vi.fn().mockResolvedValue({ totalRuns: 42 })
+}));
+```
+
+## Coverage Goals
+
+- Utility functions: 100% line coverage
+- Server data-fetching helpers: 80%+ branch coverage
+- Components: smoke test (renders without crash) for every dashboard component

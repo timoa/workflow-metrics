@@ -1,0 +1,85 @@
+---
+description: Server-side data fetching – GitHub API, Supabase, and AI patterns
+globs: src/lib/server/**,src/routes/**/*.server.ts,src/routes/api/**
+alwaysApply: false
+---
+
+# Data Fetching Patterns
+
+## GitHub API – Server Only
+
+All Octokit calls live in `$server/github.ts` or `+page.server.ts`. Never instantiate Octokit in client code.
+
+```typescript
+// ✅ Server-side only
+import { createOctokit, buildDashboardData } from '$server/github';
+
+export const load: PageServerLoad = async ({ locals }) => {
+  const octokit = createOctokit(connection.access_token);
+  return buildDashboardData(octokit, owner, repo);
+};
+```
+
+**Rate limit awareness**: GitHub allows 5,000 req/hour per token.
+- Fetch at most 100 runs per page; paginate only when needed
+- Cache results in Supabase with a 15-minute TTL before hitting the API again
+- Prefer `Promise.all()` for parallel independent requests; avoid sequential awaits
+
+## Supabase Client vs Server
+
+| Context | Client to use |
+|---|---|
+| `+page.svelte`, `+page.ts` | `$lib/supabase.ts` (anon key, browser client) |
+| `hooks.server.ts`, `+page.server.ts`, `+server.ts` | `$server/supabase.ts` (SSR client via `@supabase/ssr`) |
+
+Never use the service role key unless performing admin operations that cannot use RLS.
+
+## AI Streaming (`/api/optimize`)
+
+```typescript
+// +server.ts – streaming response pattern
+import { streamText } from 'ai';
+import { createMistral } from '@ai-sdk/mistral';
+
+export const POST: RequestHandler = async ({ request, locals }) => {
+  const { user } = await locals.safeGetSession();
+  if (!user) return new Response('Unauthorized', { status: 401 });
+
+  // Fetch user's Mistral key from DB server-side
+  const { data: settings } = await locals.supabase
+    .from('user_settings')
+    .select('mistral_api_key')
+    .eq('user_id', user.id)
+    .single();
+
+  if (!settings?.mistral_api_key) {
+    return new Response('No Mistral API key configured', { status: 400 });
+  }
+
+  const mistral = createMistral({ apiKey: settings.mistral_api_key });
+  const result = streamText({ model: mistral('mistral-large-latest'), prompt: '...' });
+  return result.toDataStreamResponse();
+};
+```
+
+## Error Handling
+
+- Wrap GitHub API calls in try/catch; return graceful fallbacks (empty arrays, null metrics) rather than crashing the load function
+- Distinguish user-facing errors (show in UI) from developer errors (log server-side only)
+- Never expose raw GitHub API error messages or stack traces to the client
+
+```typescript
+// ✅ Graceful fallback
+try {
+  return await buildDashboardData(octokit, owner, repo);
+} catch (err) {
+  console.error('GitHub API error:', err);
+  return { error: 'Failed to load metrics. Check your GitHub connection.' };
+}
+```
+
+## Cloudflare Workers Compatibility
+
+- All server code runs on Cloudflare Workers – use only Web APIs
+- No Node.js built-ins: `fs`, `path`, `crypto` (Node), `Buffer`, `process.env` at module level
+- Access env vars via `platform?.env` or SvelteKit's `$env/dynamic/private`

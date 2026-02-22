@@ -1,0 +1,72 @@
+---
+description: Component development conventions – shadcn-svelte, naming, and structure
+globs: src/lib/components/**/*.svelte,src/routes/**/*.svelte
+alwaysApply: false
+---
+
+# Component Development
+
+## Structure
+
+- **`$components/ui/`** – shadcn-svelte primitives. Extend via props/snippets; never fork unless unavoidable.
+- **`$components/dashboard/`** – Dashboard-specific display components (MetricCard, RunHistoryChart, etc.)
+- **`$components/layout/`** – Structural components (Sidebar, Navbar, ThemeToggle)
+- Presentational components receive typed props; they do not fetch data or access `locals`
+
+## Naming
+
+- PascalCase filenames: `MetricCard.svelte`, `WorkflowList.svelte`
+- Re-export public components via `$lib/index.ts` when used across multiple routes
+
+## Props Pattern
+
+```svelte
+<script lang="ts">
+  import type { WorkflowMetrics } from '$types/metrics';
+
+  let {
+    metrics,
+    loading = false,
+    class: className = ''
+  }: {
+    metrics: WorkflowMetrics;
+    loading?: boolean;
+    class?: string;
+  } = $props();
+</script>
+```
+
+- Forward `class` prop to root element for layout flexibility
+- Avoid optional props for required behavior – make it required or provide a meaningful default
+
+## Snippets over Slots
+
+Use Svelte 5 `{#snippet}` / `{@render}` instead of slots for composable content:
+
+```svelte
+<!-- ✅ Svelte 5 -->
+{#snippet footer()}
+  <p>Footer content</p>
+{/snippet}
+<Card {footer} />
+
+<!-- ❌ Old slot API -->
+<Card><p slot="footer">Footer</p></Card>
+```
+
+## Loading States
+
+- Use skeleton components from `$components/ui/skeleton/` during async loads
+- Wrap async data with `{#await}` in the component when streamed, or show skeletons based on a `loading` prop
+
+## Chart Components (LayerChart)
+
+- Wrap LayerChart primitives in typed components under `$components/dashboard/`
+- Props must include typed data arrays (`RunDataPoint[]`, `DurationDataPoint[]`)
+- Always handle empty data gracefully: show a "No data" placeholder instead of rendering an empty chart
+
+## Accessibility
+
+- Use semantic HTML: `<button>` for actions, `<a>` for navigation, `<table>` for tabular data
+- Status badges must include `aria-label` describing the status for screen readers
+- Keyboard navigation must work for all interactive elements
