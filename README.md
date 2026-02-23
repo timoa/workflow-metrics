@@ -26,6 +26,11 @@ An open-source dashboard for GitHub Actions metrics with AI-powered optimization
 - **Deployment**: Cloudflare Pages via `@sveltejs/adapter-cloudflare`
 - **Package manager**: PNPM
 
+## Design
+
+The UI design and color system are inspired by the free template **"Dark Admin Dashboard"** by [Malik Ali](https://www.figma.com/@malik_ali).  
+Figma template: [Dark Admin Dashboards](https://www.figma.com/community/file/1325597018063319916/free-dark-admin-dashboards).
+
 ## Setup
 
 ### 1. Clone and install
@@ -41,10 +46,10 @@ pnpm install
 1. Create a new project at [supabase.com](https://supabase.com)
 2. Run the migration in `supabase/migrations/001_initial.sql` via the Supabase SQL editor
 3. **GitHub OAuth (use an OAuth App, not a GitHub App):**
-   - Create a **GitHub OAuth App** at [GitHub → Settings → Developer settings → OAuth Apps → New OAuth App](https://github.com/settings/applications/new)
-   - Set **Authorization callback URL** to your **Supabase** callback: `https://<your-project-ref>.supabase.co/auth/v1/callback` (find your project ref in Supabase Dashboard → Settings → API)
-   - Copy the Client ID and Client secret, then in **Supabase → Authentication → Providers → GitHub** paste them and enable GitHub
-   - In **Supabase → Authentication → URL Configuration**, add your app’s callback to **Redirect URLs**: `http://localhost:5173/auth/callback` (local) and `https://your-domain.com/auth/callback` (production)
+  - Create a **GitHub OAuth App** at [GitHub → Settings → Developer settings → OAuth Apps → New OAuth App](https://github.com/settings/applications/new)
+  - Set **Authorization callback URL** to your **Supabase** callback: `https://<your-project-ref>.supabase.co/auth/v1/callback` (find your project ref in Supabase Dashboard → Settings → API)
+  - Copy the Client ID and Client secret, then in **Supabase → Authentication → Providers → GitHub** paste them and enable GitHub
+  - In **Supabase → Authentication → URL Configuration**, add your app’s callback to **Redirect URLs**: `http://localhost:5173/auth/callback` (local) and `https://your-domain.com/auth/callback` (production)
 
 ### 3. Configure environment variables
 
@@ -77,14 +82,17 @@ Connect your GitHub repository to Cloudflare Pages with these build settings:
 
 In the Cloudflare Pages dashboard → Settings → Environment Variables:
 
-| Variable | Description |
-|---|---|
-| `PUBLIC_SUPABASE_URL` | Your Supabase project URL |
-| `PUBLIC_SUPABASE_ANON_KEY` | Your Supabase anon key |
+
+| Variable                   | Description                              |
+| -------------------------- | ---------------------------------------- |
+| `PUBLIC_SUPABASE_URL`      | Your Supabase project URL                |
+| `PUBLIC_SUPABASE_ANON_KEY` | Your Supabase anon key (publishable key) |
+
 
 ### 3. Update Supabase OAuth redirect URLs
 
 Add your Cloudflare Pages URL to the allowed redirect URLs in Supabase:
+
 ```
 https://your-project.pages.dev/auth/callback
 https://your-custom-domain.com/auth/callback
@@ -105,6 +113,7 @@ The key is stored encrypted in Supabase and is only used server-side.
 See `supabase/migrations/001_initial.sql` for the full schema with RLS policies.
 
 Tables:
+
 - `github_connections` — GitHub OAuth tokens per user
 - `repositories` — Tracked repositories per user
 - `user_settings` — Mistral API key, theme, default repo
