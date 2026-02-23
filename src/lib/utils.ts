@@ -64,9 +64,9 @@ export function percentile(sorted: number[], p: number): number {
 export function conclusionColor(conclusion: string | null | undefined): string {
 	switch (conclusion) {
 		case 'success':
-			return 'text-green-500';
+			return 'text-success';
 		case 'failure':
-			return 'text-red-500';
+			return 'text-destructive';
 		case 'cancelled':
 			return 'text-yellow-500';
 		case 'timed_out':

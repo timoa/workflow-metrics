@@ -29,7 +29,7 @@
 		<p class="text-2xl font-bold text-foreground">{value}</p>
 		<div class="flex items-center gap-2">
 			{#if trendLabel}
-				<span class="text-xs font-medium {trendPositive ? 'text-green-500' : 'text-red-500'}">
+				<span class="text-xs font-medium {trendPositive ? 'text-success' : 'text-destructive'}">
 					{trendLabel}
 				</span>
 			{/if}

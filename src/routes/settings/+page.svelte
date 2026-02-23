@@ -42,7 +42,7 @@
 							Connected {new Date(conn.created_at).toLocaleDateString()}
 						</p>
 					</div>
-					<span class="text-xs bg-green-500/10 text-green-500 border border-green-500/20 rounded-full px-2 py-0.5">
+					<span class="text-xs bg-success/10 text-success border border-success/20 rounded-full px-2 py-0.5">
 						Active
 					</span>
 				</div>

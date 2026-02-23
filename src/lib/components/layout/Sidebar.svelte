@@ -35,10 +35,10 @@
 			<a
 				href={item.href}
 				class={cn(
-					'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
+					'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors border-l-2',
 					page.url.pathname === item.href || page.url.pathname.startsWith(item.href + '/')
-						? 'bg-sidebar-primary text-sidebar-primary-foreground'
-						: 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+						? 'border-l-primary bg-sidebar-primary text-sidebar-primary-foreground'
+						: 'border-l-transparent text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
 				)}
 			>
 				{@html item.icon}

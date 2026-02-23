@@ -37,6 +37,12 @@
 		</div>
 	{:else}
 		<svg viewBox="0 0 {width} {height}" class="w-full" preserveAspectRatio="none">
+			<defs>
+				<linearGradient id="duration-trend-fill" x1="0" x2="0" y1="0" y2="1">
+					<stop offset="0%" stop-color="var(--color-primary)" stop-opacity="0.35" />
+					<stop offset="100%" stop-color="var(--color-primary)" stop-opacity="0" />
+				</linearGradient>
+			</defs>
 			<!-- Grid lines + y-axis labels -->
 			{#each [0, 0.25, 0.5, 0.75, 1] as pct}
 				<line
@@ -60,10 +66,10 @@
 				</text>
 			{/each}
 
-			<!-- Fill -->
+			<!-- Fill with gradient (opaque at line, transparent at axis) -->
 			<path
 				d="{linePath} L {x(completed.length - 1)} {padding.top + chartHeight} L {padding.left} {padding.top + chartHeight} Z"
-				class="fill-primary/10"
+				fill="url(#duration-trend-fill)"
 			/>
 
 			<!-- Line -->

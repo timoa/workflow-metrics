@@ -42,10 +42,10 @@
 		<h3 class="text-sm font-semibold text-foreground">Run History (30 days)</h3>
 		<div class="flex items-center gap-4 text-xs text-muted-foreground">
 			<span class="flex items-center gap-1.5">
-				<span class="size-2 rounded-full bg-green-500 inline-block"></span> Success
+				<span class="size-2 rounded-full bg-success inline-block"></span> Success
 			</span>
 			<span class="flex items-center gap-1.5">
-				<span class="size-2 rounded-full bg-red-500 inline-block"></span> Failure
+				<span class="size-2 rounded-full bg-destructive inline-block"></span> Failure
 			</span>
 		</div>
 	</div>
@@ -56,6 +56,16 @@
 		</div>
 	{:else}
 		<svg viewBox="0 0 {width} {height}" class="w-full" preserveAspectRatio="none">
+			<defs>
+				<linearGradient id="run-history-success" x1="0" x2="0" y1="0" y2="1">
+					<stop offset="0%" stop-color="var(--color-success)" stop-opacity="0.4" />
+					<stop offset="100%" stop-color="var(--color-success)" stop-opacity="0" />
+				</linearGradient>
+				<linearGradient id="run-history-failure" x1="0" x2="0" y1="0" y2="1">
+					<stop offset="0%" stop-color="var(--color-destructive)" stop-opacity="0.4" />
+					<stop offset="100%" stop-color="var(--color-destructive)" stop-opacity="0" />
+				</linearGradient>
+			</defs>
 			<!-- Grid lines -->
 			{#each [0, 0.25, 0.5, 0.75, 1] as pct}
 				<line
@@ -70,19 +80,19 @@
 				/>
 			{/each}
 
-			<!-- Fill areas -->
+			<!-- Fill areas with gradient (opaque at line, transparent at axis) -->
 			<path
 				d="{successPath} L {x(data.length - 1)} {y(0)} L {x(0)} {y(0)} Z"
-				fill="rgb(34 197 94 / 0.15)"
+				fill="url(#run-history-success)"
 			/>
 			<path
 				d="{failurePath} L {x(data.length - 1)} {y(0)} L {x(0)} {y(0)} Z"
-				fill="rgb(239 68 68 / 0.15)"
+				fill="url(#run-history-failure)"
 			/>
 
 			<!-- Lines -->
-			<path d={successPath} fill="none" stroke="rgb(34 197 94)" stroke-width="2" />
-			<path d={failurePath} fill="none" stroke="rgb(239 68 68)" stroke-width="2" />
+			<path d={successPath} fill="none" stroke="var(--color-success)" stroke-width="2" />
+			<path d={failurePath} fill="none" stroke="var(--color-destructive)" stroke-width="2" />
 
 			<!-- X-axis labels -->
 			{#each xLabels as label}
