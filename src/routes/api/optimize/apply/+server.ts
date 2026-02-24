@@ -216,7 +216,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	// -----------------------------------------------------------------------
 	let currentYaml = originalYaml;
 	let currentCommitSha = baseSha;
-	const commitTitle = `fix(cicd): optimize the ${workflowName} workflow with Workflow Metrics`;
+	const commitTitle = `chore(cicd): ${workflowName} workflow optimized with Workflow Metrics`;
 
 	for (const optimization of selectedOptimizations) {
 		let stepYaml: string;
@@ -303,7 +303,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	}
 
 	// Create the Pull Request
-	const prTitle = `fix(cicd): optimize the ${workflowName} workflow with Workflow Metrics`;
+	const prTitle = `chore(cicd): ${workflowName} workflow optimized with Workflow Metrics`;
 	const prBodyLines = [
 		`## AI Optimizations for \`${workflowName}\``,
 		'',
