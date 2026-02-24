@@ -39,6 +39,34 @@
 	let prError = $state<string | null>(null);
 	let prUrl = $state<string | null>(null);
 
+	// Copy feedback: id of the item that was just copied (clear after short delay)
+	let copiedId = $state<string | null>(null);
+	let copiedAll = $state(false);
+	async function copyCode(code: string, id: string) {
+		try {
+			await navigator.clipboard.writeText(code);
+			copiedId = id;
+			setTimeout(() => (copiedId = null), 2000);
+		} catch (_) {
+			// ignore
+		}
+	}
+	/** Copy all selected optimizations' code in one block (for manual paste when Apply as PR isn't available). */
+	async function copySelectedCode() {
+		if (selectedOptimizations.length === 0) return;
+		const parts = selectedOptimizations.map(
+			(o) => `# --- ${o.title} ---\n${stripCodeFences(o.codeExample ?? '')}`
+		);
+		const text = parts.join('\n\n');
+		try {
+			await navigator.clipboard.writeText(text);
+			copiedAll = true;
+			setTimeout(() => (copiedAll = false), 2000);
+		} catch (_) {
+			// ignore
+		}
+	}
+
 	async function optimize(force = false) {
 		loading = true;
 		error = null;
@@ -72,9 +100,10 @@
 		optimize();
 	});
 
-	// Highlight code blocks after DOM update
+	// Highlight code blocks after DOM update (re-run when openItems changes so expanded blocks get highlighted)
 	$effect(() => {
 		if (!entry || !browser) return;
+		openItems;
 		void tick().then(() => {
 			document.querySelectorAll('.opt-code-block code.hljs').forEach((el) => {
 				hljs.highlightElement(el as HTMLElement);
@@ -159,6 +188,18 @@
 		High:   'bg-red-500/15 text-red-400 border-red-500/20'
 	};
 
+	/** Remove markdown code block fences (e.g. ```yaml and ```) from AI-generated code. */
+	function stripCodeFences(code: string): string {
+		let s = code.trim();
+		if (s.startsWith('```')) {
+			s = s.replace(/^```[\w]*\n?/, '');
+		}
+		if (s.endsWith('```')) {
+			s = s.replace(/\n?```\s*$/, '');
+		}
+		return s.trim();
+	}
+
 	function escapeHtml(s: string): string {
 		return s
 			.replace(/&/g, '&amp;')
@@ -168,7 +209,8 @@
 	}
 
 	function renderCode(code: string): string {
-		const escaped = escapeHtml(code);
+		const cleaned = stripCodeFences(code);
+		const escaped = escapeHtml(cleaned);
 		return `<pre class="opt-code-block"><code class="hljs language-yaml">${escaped}</code></pre>`;
 	}
 </script>
@@ -319,8 +361,25 @@
 							<div class="border-t border-border px-4 pb-4 pt-3 space-y-3">
 								<p class="text-sm text-foreground/90 leading-relaxed">{opt.explanation}</p>
 								{#if opt.codeExample && browser}
-									<div class="opt-code-wrapper">
-										{@html renderCode(opt.codeExample)}
+									<div class="opt-code-wrapper relative group">
+										<button
+											type="button"
+											onclick={() => copyCode(stripCodeFences(opt.codeExample ?? ''), opt.id)}
+											class="absolute top-2 right-2 z-10 size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors opacity-70 hover:opacity-100 focus:opacity-100 focus:outline-none"
+											aria-label="Copy code"
+										>
+											{#if copiedId === opt.id}
+												<svg class="size-4 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+													<path d="M5 12l5 5L20 7"/>
+												</svg>
+											{:else}
+												<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+													<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+													<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+												</svg>
+											{/if}
+										</button>
+										{@html renderCode(opt.codeExample ?? '')}
 									</div>
 								{/if}
 							</div>
@@ -392,35 +451,60 @@
 				</div>
 			{/if}
 
-			<!-- Apply as PR -->
-			<div class="flex items-center justify-between pt-1">
+			<!-- Apply as PR + Copy selected (fallback when PR not available) -->
+			<div class="space-y-2 pt-1">
 				<p class="text-xs text-muted-foreground">
 					{checkedItems.size > 0
 						? `${checkedItems.size} optimization${checkedItems.size > 1 ? 's' : ''} selected`
-						: 'Select optimizations to apply as a PR'}
+						: 'Select optimizations to apply as a PR or copy to paste manually'}
 				</p>
-				<button
-					onclick={applyAsPr}
-					disabled={checkedItems.size === 0 || applyingPr}
-					class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors
-						{checkedItems.size > 0 && !applyingPr
-							? 'bg-primary text-primary-foreground hover:bg-primary/90'
-							: 'bg-muted text-muted-foreground cursor-not-allowed'}"
-				>
-					{#if applyingPr}
-						<svg class="size-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-							<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-							<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-						</svg>
-						Creating PR…
-					{:else}
-						<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-							<circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/>
-							<path d="M6 9v6M15 18h-6M18 15V9a6 6 0 0 0-6-6"/>
-						</svg>
-						Apply {checkedItems.size > 0 ? `${checkedItems.size} ` : ''}as PR
-					{/if}
-				</button>
+				<div class="flex flex-wrap items-center gap-2">
+					<button
+						onclick={applyAsPr}
+						disabled={checkedItems.size === 0 || applyingPr}
+						class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors
+							{checkedItems.size > 0 && !applyingPr
+								? 'bg-primary text-primary-foreground hover:bg-primary/90'
+								: 'bg-muted text-muted-foreground cursor-not-allowed'}"
+					>
+						{#if applyingPr}
+							<svg class="size-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+								<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+								<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+							</svg>
+							Creating PR…
+						{:else}
+							<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+								<circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/>
+								<path d="M6 9v6M15 18h-6M18 15V9a6 6 0 0 0-6-6"/>
+							</svg>
+							Apply {checkedItems.size > 0 ? `${checkedItems.size} ` : ''}as PR
+						{/if}
+					</button>
+					<button
+						type="button"
+						onclick={copySelectedCode}
+						disabled={checkedItems.size === 0}
+						class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-border bg-background text-foreground hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+						title="Copy selected code to paste into your workflow manually (e.g. when Apply as PR isn't available)"
+					>
+						{#if copiedAll}
+							<svg class="size-4 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+								<path d="M5 12l5 5L20 7"/>
+							</svg>
+							Copied
+						{:else}
+							<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+								<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+								<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+							</svg>
+							Copy selected
+						{/if}
+					</button>
+				</div>
+				<p class="text-xs text-muted-foreground/80">
+					If Apply as PR isn't available (e.g. GitHub App not installed), use Copy selected or the copy icon on each block to paste changes into your workflow file.
+				</p>
 			</div>
 
 			<!-- PR success / error -->
@@ -443,12 +527,12 @@
 			{#if prError}
 				<div class="bg-destructive/10 border border-destructive/20 text-destructive rounded-lg p-3 text-xs space-y-1.5">
 					<p>{prError}</p>
-					{#if prError.includes('write access') || prError.includes('404') || prError.includes('permission')}
+					{#if prError.includes('not installed') || prError.includes('GitHub App') || prError.includes('permission') || prError.includes('404') || prError.includes('401') || prError.includes('403')}
 						<p>
 							<a href="/settings" class="underline hover:no-underline font-medium">
-								Go to Settings → Grant write access
+								Go to Settings → install the GitHub App
 							</a>
-							to reconnect GitHub with the required permissions.
+							on this account or organization to enable write access.
 						</p>
 					{/if}
 				</div>
