@@ -38,8 +38,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 	const addOrgOnly = url.searchParams.get('add') === 'org';
 	const accounts = addOrgOnly ? allAccounts.filter((a) => a.type === 'org') : allAccounts;
+	const fromSettings = url.searchParams.get('from') === 'settings';
 
-	return { accounts, connectionId: connection.id, addOrgOnly };
+	return { accounts, connectionId: connection.id, addOrgOnly, fromSettings };
 };
 
 export const actions: Actions = {

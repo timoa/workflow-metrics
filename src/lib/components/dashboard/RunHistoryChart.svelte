@@ -137,20 +137,6 @@
 						<stop offset="0%" stop-color="var(--color-destructive)" stop-opacity="0.4" />
 						<stop offset="100%" stop-color="var(--color-destructive)" stop-opacity="0" />
 					</linearGradient>
-					<!-- Workflow change markers: vertical gradient (fade at ends) + glow -->
-					<linearGradient id="workflow-marker-gradient" x1="0.5" y1="0" x2="0.5" y2="1">
-						<stop offset="0%" stop-color="var(--color-chart-2)" stop-opacity="0" />
-						<stop offset="25%" stop-color="var(--color-chart-2)" stop-opacity="0.95" />
-						<stop offset="75%" stop-color="var(--color-chart-2)" stop-opacity="0.95" />
-						<stop offset="100%" stop-color="var(--color-chart-2)" stop-opacity="0" />
-					</linearGradient>
-					<filter id="workflow-marker-glow" x="-50%" y="-20%" width="200%" height="140%">
-						<feGaussianBlur in="SourceGraphic" stdDeviation="1.5" result="blur" />
-						<feMerge>
-							<feMergeNode in="blur" />
-							<feMergeNode in="SourceGraphic" />
-						</feMerge>
-					</filter>
 				</defs>
 				<!-- Grid lines -->
 				{#each [0, 0.25, 0.5, 0.75, 1] as pct}
@@ -178,17 +164,18 @@
 				<path d={failurePath} fill="none" stroke="var(--color-destructive)" stroke-width="2" />
 				<path d={successPath} fill="none" stroke="var(--color-success)" stroke-width="2" />
 
-				<!-- Commit markers (workflow file changes) -->
+				<!-- Commit markers (workflow file changes): dashed vertical line so it’s clearly visible -->
 				{#each commitMarkers as marker}
 					<line
 						x1={marker.x}
 						y1={padding.top}
 						x2={marker.x}
 						y2={padding.top + chartHeight}
-						stroke="url(#workflow-marker-gradient)"
-						stroke-width="2.5"
+						stroke="var(--color-chart-2)"
+						stroke-width="2"
+						stroke-dasharray="6 4"
 						stroke-linecap="round"
-						filter="url(#workflow-marker-glow)"
+						stroke-opacity="0.9"
 					/>
 				{/each}
 

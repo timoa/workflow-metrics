@@ -6,6 +6,7 @@
 
 	let showMistralKey = $state(false);
 	let savingSettings = $state(false);
+	let savingAiSettings = $state(false);
 </script>
 
 <svelte:head>
@@ -97,16 +98,14 @@
 		<div class="divide-y divide-border">
 			{#each data.repos as repo}
 				<div class="flex items-center gap-4 px-5 py-3">
-					<div class="flex-1 min-w-0">
+					<div class="flex-1 min-w-0 flex flex-wrap items-center gap-2">
 						<p class="text-sm font-medium text-foreground truncate">{repo.full_name}</p>
-						<div class="flex items-center gap-2 mt-0.5">
-							{#if repo.is_private}
-								<span class="text-xs text-muted-foreground">Private</span>
-							{/if}
-							{#if !repo.is_active}
-								<span class="text-xs text-yellow-500">Inactive</span>
-							{/if}
-						</div>
+						{#if repo.is_private}
+							<span class="shrink-0 rounded-md border border-border bg-muted/80 px-2 py-0.5 text-xs font-medium text-muted-foreground">Private</span>
+						{/if}
+						{#if !repo.is_active}
+							<span class="shrink-0 rounded-md border border-yellow-500/30 bg-yellow-500/10 px-2 py-0.5 text-xs font-medium text-yellow-500">Inactive</span>
+						{/if}
 					</div>
 					{#if repo.is_active}
 						<form method="POST" action="?/removeRepo" use:enhance>
@@ -124,21 +123,21 @@
 		</div>
 	</section>
 
-	<!-- App Settings -->
+	<!-- AI Optimisation -->
 	<section class="bg-card border border-border rounded-xl overflow-hidden">
 		<div class="p-5 border-b border-border">
-			<h2 class="text-sm font-semibold text-foreground">Preferences</h2>
-			<p class="text-xs text-muted-foreground mt-0.5">Configure your Workflow Metrics experience</p>
+			<h2 class="text-sm font-semibold text-foreground">AI Optimisation</h2>
+			<p class="text-xs text-muted-foreground mt-0.5">Configure AI-powered workflow optimisation</p>
 		</div>
 		<form
 			method="POST"
 			action="?/updateSettings"
 			class="p-5 space-y-6"
 			use:enhance={() => {
-				savingSettings = true;
+				savingAiSettings = true;
 				return async ({ update }) => {
 					await update();
-					savingSettings = false;
+					savingAiSettings = false;
 				};
 			}}
 		>
@@ -152,8 +151,8 @@
 					Settings saved successfully.
 				</div>
 			{/if}
-
-			<!-- Mistral API Key -->
+			<input type="hidden" name="theme" value={data.settings?.theme ?? 'dark'} />
+			<input type="hidden" name="default_repo_id" value={data.settings?.default_repo_id ?? ''} />
 			<div class="space-y-2">
 				<label class="block text-sm font-medium text-foreground" for="mistral_api_key">
 					Mistral AI API Key
@@ -193,7 +192,47 @@
 					</button>
 				</div>
 			</div>
+			<div class="pt-2">
+				<button
+					type="submit"
+					disabled={savingAiSettings}
+					class="bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 rounded-lg px-4 py-2 text-sm font-medium transition-colors"
+				>
+					{savingAiSettings ? 'Saving...' : 'Save AI settings'}
+				</button>
+			</div>
+		</form>
+	</section>
 
+	<!-- Preferences -->
+	<section class="bg-card border border-border rounded-xl overflow-hidden">
+		<div class="p-5 border-b border-border">
+			<h2 class="text-sm font-semibold text-foreground">Preferences</h2>
+			<p class="text-xs text-muted-foreground mt-0.5">Configure your Workflow Metrics experience</p>
+		</div>
+		<form
+			method="POST"
+			action="?/updateSettings"
+			class="p-5 space-y-6"
+			use:enhance={() => {
+				savingSettings = true;
+				return async ({ update }) => {
+					await update();
+					savingSettings = false;
+				};
+			}}
+		>
+			{#if form?.error}
+				<div class="bg-destructive/10 border border-destructive/20 text-destructive rounded-lg px-4 py-3 text-sm">
+					{form.error}
+				</div>
+			{/if}
+			{#if form?.success}
+				<div class="bg-green-500/10 border border-green-500/20 text-green-500 rounded-lg px-4 py-3 text-sm">
+					Settings saved successfully.
+				</div>
+			{/if}
+			<input type="hidden" name="mistral_api_key" value={data.settings?.mistral_api_key ?? ''} />
 			<!-- Theme -->
 			<div class="space-y-2">
 				<label class="block text-sm font-medium text-foreground" for="theme">Theme</label>

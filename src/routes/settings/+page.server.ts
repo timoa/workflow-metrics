@@ -78,7 +78,7 @@ export const actions: Actions = {
 		if (!user) return fail(401, { error: 'Unauthorized' });
 
 		// Redirect to onboarding to add more repos (user or org)
-		throw redirect(303, '/onboarding');
+		throw redirect(303, '/onboarding?from=settings');
 	},
 
 	addOrg: async ({ locals }) => {
@@ -86,6 +86,6 @@ export const actions: Actions = {
 		if (!user) return fail(401, { error: 'Unauthorized' });
 
 		// Redirect to onboarding to add repos from an organization
-		throw redirect(303, '/onboarding?add=org');
+		throw redirect(303, '/onboarding?add=org&from=settings');
 	}
 };

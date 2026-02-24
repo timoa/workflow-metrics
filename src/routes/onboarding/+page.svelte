@@ -54,6 +54,19 @@
 
 <div class="min-h-screen bg-background flex flex-col items-center justify-center p-4">
 	<div class="w-full max-w-2xl space-y-8">
+		{#if data.fromSettings}
+			<div class="w-full flex justify-start">
+				<a
+					href="/settings"
+					class="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+				>
+					<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<polyline points="15 18 9 12 15 6"/>
+					</svg>
+					Back to Settings
+				</a>
+			</div>
+		{/if}
 		<div class="text-center space-y-2">
 			<div class="flex items-center justify-center gap-2">
 				<img src="/logo.svg" alt="" class="size-8 h-8 w-8 object-contain" />

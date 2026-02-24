@@ -195,7 +195,7 @@
 		<div class="lg:col-span-3">
 			<RunHistoryChart
 				data={data.dashboardData.runTrend}
-				commits={data.dashboardData.workflowFileCommits}
+				commits={data.dashboardData.workflowFileCommits ?? []}
 			/>
 		</div>
 		<div class="lg:col-span-2">

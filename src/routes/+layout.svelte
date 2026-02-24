@@ -21,7 +21,7 @@
 	{@render children()}
 {:else}
 	<div class="flex h-screen overflow-hidden bg-background">
-		<Sidebar user={data.user!} />
+		<Sidebar user={data.user!} githubUser={data.githubUser ?? null} />
 		<div class="flex-1 flex flex-col overflow-hidden relative">
 			{#if showLoading}
 				<div

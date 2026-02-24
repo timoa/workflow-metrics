@@ -3,7 +3,7 @@
 	import { cn } from '$lib/utils';
 	import type { User } from '@supabase/supabase-js';
 
-	let { user } = $props<{ user: User }>();
+	let { user, githubUser = null }: { user: User; githubUser?: { username: string; avatarUrl: string | null } | null } = $props();
 
 	const navItems = [
 		{
@@ -51,13 +51,21 @@
 	<div class="p-3 border-t border-sidebar-border">
 		<div class="flex items-center gap-3 px-2 py-2">
 			<div class="size-7 rounded-full bg-secondary flex items-center justify-center overflow-hidden flex-shrink-0">
-				<svg class="size-4 text-muted-foreground" viewBox="0 0 24 24" fill="currentColor">
-					<path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
-				</svg>
+				{#if githubUser?.avatarUrl}
+					<img
+						src={githubUser.avatarUrl}
+						alt={githubUser.username}
+						class="size-full object-cover"
+					/>
+				{:else}
+					<svg class="size-4 text-muted-foreground" viewBox="0 0 24 24" fill="currentColor">
+						<path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
+					</svg>
+				{/if}
 			</div>
 			<div class="min-w-0 flex-1">
 				<p class="text-xs font-medium text-sidebar-foreground truncate">
-					{user.email?.split('@')[0] ?? 'User'}
+					{githubUser?.username ?? user.email?.split('@')[0] ?? 'User'}
 				</p>
 				<p class="text-xs text-muted-foreground truncate">{user.email}</p>
 			</div>
