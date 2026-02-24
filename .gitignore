@@ -21,3 +21,16 @@ Thumbs.db
 # Vite
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Supabase
+supabase/.temp
+supabase/.env
+supabase/.env.*
+supabase/.env.test
+supabase/.env.development
+supabase/.env.production
+supabase/.env.staging
+supabase/.env.test
+supabase/.env.development
+supabase/.env.production
+supabase/.env.staging

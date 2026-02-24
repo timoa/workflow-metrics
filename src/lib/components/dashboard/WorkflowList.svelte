@@ -1,14 +1,8 @@
 <script lang="ts">
 	import type { WorkflowMetrics } from '$lib/types/metrics';
-	import { formatDuration, formatRelativeTime } from '$lib/utils';
+	import { formatDuration, formatRelativeTime, successRateColor } from '$lib/utils';
 
 	let { metrics, owner, repo }: { metrics: WorkflowMetrics[]; owner: string; repo: string } = $props();
-
-	function successRateColor(rate: number): string {
-		if (rate >= 90) return 'text-green-500';
-		if (rate >= 70) return 'text-yellow-500';
-		return 'text-red-500';
-	}
 </script>
 
 <div class="bg-card border border-border rounded-xl overflow-hidden">

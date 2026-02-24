@@ -5,7 +5,7 @@
 	import DurationTrendChart from '$lib/components/dashboard/DurationTrendChart.svelte';
 	import JobBreakdownChart from '$lib/components/dashboard/JobBreakdownChart.svelte';
 	import OptimizePanel from '$lib/components/dashboard/OptimizePanel.svelte';
-	import { formatDuration } from '$lib/utils';
+	import { formatDuration, failureRateColor, successRateColor } from '$lib/utils';
 
 	let { data }: { data: PageData } = $props();
 	let { detailData, owner, repo, hasMistralKey } = $derived(data);
@@ -70,6 +70,7 @@
 			title="Success Rate"
 			value="{metrics.successRate.toFixed(1)}%"
 			subtitle="{metrics.successCount} of {metrics.totalRuns} runs"
+			valueClass={successRateColor(metrics.successRate)}
 		/>
 		<MetricCard
 			title="Avg Duration"
@@ -85,6 +86,7 @@
 			title="Failures"
 			value={metrics.failureCount.toLocaleString()}
 			subtitle="{(100 - metrics.successRate).toFixed(1)}% failure rate"
+			valueClass={failureRateColor(100 - metrics.successRate)}
 		/>
 	</div>
 

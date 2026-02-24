@@ -1,7 +1,11 @@
 <script lang="ts">
-	import type { RunDataPoint } from '$lib/types/metrics';
+	import type { RunDataPoint, WorkflowFileCommit } from '$lib/types/metrics';
 
-	let { data }: { data: RunDataPoint[] } = $props();
+	let { data, commits = [] }: { data: RunDataPoint[]; commits?: WorkflowFileCommit[] } = $props();
+
+	// Hover state: index into data for tooltip
+	let hoveredIndex = $state<number | null>(null);
+	let chartRef = $state<HTMLDivElement | null>(null);
 
 	// Simple SVG chart - no external chart library needed for MVP
 	const width = 600;
@@ -13,7 +17,7 @@
 	const maxTotal = $derived(Math.max(...data.map((d) => d.total), 1));
 
 	function x(i: number) {
-		return padding.left + (i / (data.length - 1)) * chartWidth;
+		return padding.left + (i / Math.max(data.length - 1, 1)) * chartWidth;
 	}
 	function y(val: number) {
 		return padding.top + chartHeight - (val / maxTotal) * chartHeight;
@@ -35,6 +39,59 @@
 				x: x(data.indexOf(d))
 			}))
 	);
+
+	const hoveredPoint = $derived(hoveredIndex != null ? data[hoveredIndex] : null);
+	const hoveredX = $derived(hoveredIndex != null ? x(hoveredIndex) : 0);
+
+	// Commit markers: group by date, compute x from date (only for dates in chart range)
+	const commitMarkers = $derived.by(() => {
+		if (!commits.length || !data.length) return [];
+		const minDate = data[0].date;
+		const maxDate = data[data.length - 1].date;
+		const dateToIndex = new Map<string, number>();
+		data.forEach((d, i) => dateToIndex.set(d.date, i));
+		const byDate = new Map<string, WorkflowFileCommit[]>();
+		for (const c of commits) {
+			if (c.date < minDate || c.date > maxDate) continue;
+			if (!byDate.has(c.date)) byDate.set(c.date, []);
+			byDate.get(c.date)!.push(c);
+		}
+		return Array.from(byDate.entries()).map(([date, list]) => {
+			const xi = dateToIndex.get(date) ?? data.length - 1;
+			return { x: x(xi), date, commits: list };
+		});
+	});
+
+	const hoveredMarker = $derived(
+		hoveredIndex != null && commitMarkers.length
+			? commitMarkers.find((m) => m.date === data[hoveredIndex]?.date) ?? null
+			: null
+	);
+
+	function handleChartMouseMove(e: MouseEvent) {
+		const el = chartRef;
+		if (!el || data.length === 0) return;
+		const rect = el.getBoundingClientRect();
+		const viewX = (e.clientX - rect.left) / rect.width;
+		const viewBoxX = viewX * width;
+		const dataIndex = Math.round(
+			Math.max(0, Math.min(data.length - 1, ((viewBoxX - padding.left) / chartWidth) * (data.length - 1)))
+		);
+		hoveredIndex = dataIndex;
+	}
+
+	function handleChartMouseLeave() {
+		hoveredIndex = null;
+	}
+
+	function formatDate(dateStr: string) {
+		return new Date(dateStr).toLocaleDateString('en-US', {
+			weekday: 'short',
+			month: 'short',
+			day: 'numeric',
+			year: 'numeric'
+		});
+	}
 </script>
 
 <div class="bg-card border border-border rounded-xl p-5 space-y-4">
@@ -47,6 +104,13 @@
 			<span class="flex items-center gap-1.5">
 				<span class="size-2 rounded-full bg-destructive inline-block"></span> Failure
 			</span>
+			{#if commits.length > 0}
+				<span class="flex items-center gap-1.5" title="Commits that changed .github/workflows">
+					<span
+						class="inline-block w-3 h-0.5 rounded-full bg-[var(--color-chart-2)] shadow-[0_0_6px_var(--color-chart-2)]"
+					></span> Workflow changes
+				</span>
+			{/if}
 		</div>
 	</div>
 
@@ -55,57 +119,149 @@
 			No runs in the last 30 days
 		</div>
 	{:else}
-		<svg viewBox="0 0 {width} {height}" class="w-full" preserveAspectRatio="none">
-			<defs>
-				<linearGradient id="run-history-success" x1="0" x2="0" y1="0" y2="1">
-					<stop offset="0%" stop-color="var(--color-success)" stop-opacity="0.4" />
-					<stop offset="100%" stop-color="var(--color-success)" stop-opacity="0" />
-				</linearGradient>
-				<linearGradient id="run-history-failure" x1="0" x2="0" y1="0" y2="1">
-					<stop offset="0%" stop-color="var(--color-destructive)" stop-opacity="0.4" />
-					<stop offset="100%" stop-color="var(--color-destructive)" stop-opacity="0" />
-				</linearGradient>
-			</defs>
-			<!-- Grid lines -->
-			{#each [0, 0.25, 0.5, 0.75, 1] as pct}
-				<line
-					x1={padding.left}
-					y1={padding.top + chartHeight * (1 - pct)}
-					x2={width - padding.right}
-					y2={padding.top + chartHeight * (1 - pct)}
-					stroke="currentColor"
-					class="text-border"
-					stroke-width="0.5"
-					stroke-dasharray="4 4"
+		<div
+			class="relative w-full cursor-crosshair"
+			bind:this={chartRef}
+			onmousemove={handleChartMouseMove}
+			onmouseleave={handleChartMouseLeave}
+			role="img"
+			aria-label="Run history chart. Hover over the chart to see daily counts."
+		>
+			<svg viewBox="0 0 {width} {height}" class="w-full block" preserveAspectRatio="none">
+				<defs>
+					<linearGradient id="run-history-success" x1="0" x2="0" y1="0" y2="1">
+						<stop offset="0%" stop-color="var(--color-success)" stop-opacity="0.4" />
+						<stop offset="100%" stop-color="var(--color-success)" stop-opacity="0" />
+					</linearGradient>
+					<linearGradient id="run-history-failure" x1="0" x2="0" y1="0" y2="1">
+						<stop offset="0%" stop-color="var(--color-destructive)" stop-opacity="0.4" />
+						<stop offset="100%" stop-color="var(--color-destructive)" stop-opacity="0" />
+					</linearGradient>
+					<!-- Workflow change markers: vertical gradient (fade at ends) + glow -->
+					<linearGradient id="workflow-marker-gradient" x1="0.5" y1="0" x2="0.5" y2="1">
+						<stop offset="0%" stop-color="var(--color-chart-2)" stop-opacity="0" />
+						<stop offset="25%" stop-color="var(--color-chart-2)" stop-opacity="0.95" />
+						<stop offset="75%" stop-color="var(--color-chart-2)" stop-opacity="0.95" />
+						<stop offset="100%" stop-color="var(--color-chart-2)" stop-opacity="0" />
+					</linearGradient>
+					<filter id="workflow-marker-glow" x="-50%" y="-20%" width="200%" height="140%">
+						<feGaussianBlur in="SourceGraphic" stdDeviation="1.5" result="blur" />
+						<feMerge>
+							<feMergeNode in="blur" />
+							<feMergeNode in="SourceGraphic" />
+						</feMerge>
+					</filter>
+				</defs>
+				<!-- Grid lines -->
+				{#each [0, 0.25, 0.5, 0.75, 1] as pct}
+					<line
+						x1={padding.left}
+						y1={padding.top + chartHeight * (1 - pct)}
+						x2={width - padding.right}
+						y2={padding.top + chartHeight * (1 - pct)}
+						stroke="currentColor"
+						class="text-border"
+						stroke-width="0.5"
+						stroke-dasharray="4 4"
+					/>
+				{/each}
+
+				<!-- Fill areas and lines: failure first, then success on top (success = default focus) -->
+				<path
+					d="{failurePath} L {x(data.length - 1)} {y(0)} L {x(0)} {y(0)} Z"
+					fill="url(#run-history-failure)"
 				/>
-			{/each}
+				<path
+					d="{successPath} L {x(data.length - 1)} {y(0)} L {x(0)} {y(0)} Z"
+					fill="url(#run-history-success)"
+				/>
+				<path d={failurePath} fill="none" stroke="var(--color-destructive)" stroke-width="2" />
+				<path d={successPath} fill="none" stroke="var(--color-success)" stroke-width="2" />
 
-			<!-- Fill areas with gradient (opaque at line, transparent at axis) -->
-			<path
-				d="{successPath} L {x(data.length - 1)} {y(0)} L {x(0)} {y(0)} Z"
-				fill="url(#run-history-success)"
-			/>
-			<path
-				d="{failurePath} L {x(data.length - 1)} {y(0)} L {x(0)} {y(0)} Z"
-				fill="url(#run-history-failure)"
-			/>
+				<!-- Commit markers (workflow file changes) -->
+				{#each commitMarkers as marker}
+					<line
+						x1={marker.x}
+						y1={padding.top}
+						x2={marker.x}
+						y2={padding.top + chartHeight}
+						stroke="url(#workflow-marker-gradient)"
+						stroke-width="2.5"
+						stroke-linecap="round"
+						filter="url(#workflow-marker-glow)"
+					/>
+				{/each}
 
-			<!-- Lines -->
-			<path d={successPath} fill="none" stroke="var(--color-success)" stroke-width="2" />
-			<path d={failurePath} fill="none" stroke="var(--color-destructive)" stroke-width="2" />
+				<!-- Hover vertical reference line -->
+				{#if hoveredIndex != null}
+					<line
+						x1={hoveredX}
+						y1={padding.top}
+						x2={hoveredX}
+						y2={padding.top + chartHeight}
+						stroke="currentColor"
+						class="text-foreground/40"
+						stroke-width="1"
+						stroke-dasharray="3 3"
+					/>
+				{/if}
 
-			<!-- X-axis labels -->
-			{#each xLabels as label}
-				<text
-					x={label.x}
-					y={height - 4}
-					text-anchor="middle"
-					font-size="9"
-					class="fill-muted-foreground"
+				<!-- X-axis labels -->
+				{#each xLabels as label}
+					<text
+						x={label.x}
+						y={height - 4}
+						text-anchor="middle"
+						font-size="9"
+						class="fill-muted-foreground"
+					>
+						{label.date}
+					</text>
+				{/each}
+			</svg>
+
+			<!-- Tooltip (horizontal position matches SVG viewBox so it stays aligned) -->
+			{#if hoveredPoint && chartRef}
+				<div
+					class="pointer-events-none absolute left-0 top-0 z-10 rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-lg"
+					style="
+						left: {(hoveredX / width) * 100}%;
+						transform: translate(-50%, calc(-100% - 8px));
+					"
 				>
-					{label.date}
-				</text>
-			{/each}
-		</svg>
+					<div class="font-medium text-foreground">{formatDate(hoveredPoint.date)}</div>
+					<div class="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-0.5 text-muted-foreground">
+						<span class="flex items-center gap-1.5">
+							<span class="size-2 rounded-full bg-success"></span>
+							Success: {hoveredPoint.success}
+						</span>
+						<span class="flex items-center gap-1.5">
+							<span class="size-2 rounded-full bg-destructive"></span>
+							Failure: {hoveredPoint.failure}
+						</span>
+						{#if hoveredPoint.cancelled > 0}
+							<span class="col-span-2 flex items-center gap-1.5">
+								<span class="size-2 rounded-full bg-muted-foreground"></span>
+								Cancelled: {hoveredPoint.cancelled}
+							</span>
+						{/if}
+						<span class="col-span-2 border-t border-border pt-1 mt-0.5 font-medium text-foreground">
+							Total: {hoveredPoint.total} run{hoveredPoint.total !== 1 ? 's' : ''}
+						</span>
+						{#if hoveredMarker}
+							<div class="col-span-2 border-t border-border pt-1 mt-0.5 space-y-1">
+								<span class="text-primary font-medium">Workflow file changes</span>
+								{#each hoveredMarker.commits as commit}
+									<div class="text-muted-foreground">
+										<span class="font-mono text-foreground">{commit.sha}</span>
+										{commit.message ? ` — ${commit.message}` : ''}
+									</div>
+								{/each}
+							</div>
+						{/if}
+					</div>
+				</div>
+			{/if}
+		</div>
 	{/if}
 </div>

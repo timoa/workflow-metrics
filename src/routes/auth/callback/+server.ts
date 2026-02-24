@@ -32,39 +32,55 @@ export const GET: RequestHandler = async ({ url, locals, cookies }) => {
 
 	if (authError || !session || !user) {
 		console.error('Auth callback error:', authError);
-		throw redirect(303, '/auth/login?error=auth_failed');
+		const msg = authError?.message ?? 'auth_failed';
+		throw redirect(303, `/auth/login?error=${encodeURIComponent(msg)}`);
 	}
 
-	// Store the GitHub access token in our github_connections table
+	// Store the GitHub access token in our github_connections table.
+	// With PKCE flow, session.provider_token may be null — fall back to user metadata.
 	const providerToken = session.provider_token;
-	if (providerToken) {
-		// Get GitHub user info from the token
+	const githubIdentity = user.identities?.find((i) => i.provider === 'github');
+	const githubMeta = user.user_metadata;
+	const githubUserId = githubIdentity?.identity_data?.sub ?? githubMeta?.provider_id;
+	const githubUsername = githubMeta?.user_name ?? githubMeta?.preferred_username;
+	const avatarUrl = githubMeta?.avatar_url;
+
+	if (providerToken && githubUserId && githubUsername) {
 		try {
-			const githubResponse = await fetch('https://api.github.com/user', {
-				headers: {
-					Authorization: `Bearer ${providerToken}`,
-					Accept: 'application/vnd.github.v3+json'
-				}
-			});
-
-			if (githubResponse.ok) {
-				const githubUser = await githubResponse.json();
-
-				// Upsert github connection
-				await locals.supabase.from('github_connections').upsert(
-					{
-						user_id: user.id,
-						github_user_id: githubUser.id,
-						github_username: githubUser.login,
-						avatar_url: githubUser.avatar_url,
-						access_token: providerToken,
-						updated_at: new Date().toISOString()
-					},
-					{ onConflict: 'user_id,github_user_id' }
-				);
+			const { error: upsertError } = await locals.supabase.from('github_connections').upsert(
+				{
+					user_id: user.id,
+					github_user_id: Number(githubUserId),
+					github_username: githubUsername,
+					avatar_url: avatarUrl ?? null,
+					access_token: providerToken,
+					updated_at: new Date().toISOString()
+				},
+				{ onConflict: 'user_id,github_user_id' }
+			);
+			if (upsertError) {
+				console.error('Failed to upsert GitHub connection:', upsertError);
 			}
 		} catch (e) {
 			console.error('Failed to store GitHub connection:', e);
+		}
+	} else if (!providerToken) {
+		// PKCE flow didn't return a provider token — check if a connection already exists
+		const { data: existing } = await locals.supabase
+			.from('github_connections')
+			.select('id')
+			.eq('user_id', user.id)
+			.limit(1)
+			.single();
+
+		if (!existing) {
+			throw redirect(
+				303,
+				'/auth/login?error=' +
+					encodeURIComponent(
+						'GitHub token was not returned. Please try signing in again. If the issue persists, revoke the app in GitHub Settings > Applications and retry.'
+					)
+			);
 		}
 	}
 

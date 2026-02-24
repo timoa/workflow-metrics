@@ -60,7 +60,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		workflowYaml = `# Could not fetch workflow YAML for ${workflowPath}`;
 	}
 
-	// Stream the optimization
+	// Stream the optimization and append usage when done
 	const result = await streamWorkflowOptimization(
 		settings.mistral_api_key,
 		workflowName,
@@ -68,5 +68,26 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		metrics
 	);
 
-	return result.toTextStreamResponse();
+	const encoder = new TextEncoder();
+	const stream = new ReadableStream({
+		async start(controller) {
+			try {
+				for await (const chunk of result.textStream) {
+					controller.enqueue(encoder.encode(chunk));
+				}
+				const usage = await result.usage;
+				if (usage) {
+					controller.enqueue(
+						encoder.encode(`\n__USAGE__${JSON.stringify({ promptTokens: usage.promptTokens, completionTokens: usage.completionTokens })}\n`)
+					);
+				}
+			} finally {
+				controller.close();
+			}
+		}
+	});
+
+	return new Response(stream, {
+		headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+	});
 };

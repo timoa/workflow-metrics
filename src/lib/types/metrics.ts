@@ -22,6 +22,18 @@ export interface RunDataPoint {
 	total: number;
 }
 
+/** Commit that touched workflow files (.github/workflows), for chart markers. */
+export interface WorkflowFileCommit {
+	/** ISO date (YYYY-MM-DD) for positioning on the run history chart. */
+	date: string;
+	/** Full ISO timestamp from commit. */
+	committedAt: string;
+	sha: string;
+	message: string;
+	/** Workflow file path(s) changed, e.g. ['.github/workflows/ci.yml']. */
+	paths: string[];
+}
+
 export interface DurationDataPoint {
 	runId: number;
 	runNumber: number;
@@ -39,6 +51,20 @@ export interface JobBreakdown {
 	samples: number;
 }
 
+/** DORA metrics (Deployment Frequency, Lead Time, CFR, MTTR) for the dashboard. */
+export interface DoraMetrics {
+	/** Successful runs per week (and per day) over the window. */
+	deploymentFrequency: { perWeek: number; perDay: number };
+	/** Median time from commit (or trigger) to run end; null if no data. */
+	leadTimeForChangesMs: number | null;
+	/** Whether lead time used commit timestamp (true) or trigger→end proxy (false). */
+	leadTimeFromCommit: boolean;
+	/** Change failure rate 0–100 (failures / (successes + failures)); exclude cancelled/skipped. */
+	changeFailureRate: number;
+	/** Mean time from failure completion to next success; null if no failure→success pairs. */
+	meanTimeToRecoveryMs: number | null;
+}
+
 export interface DashboardData {
 	owner: string;
 	repo: string;
@@ -49,6 +75,9 @@ export interface DashboardData {
 	runTrend: RunDataPoint[];
 	workflowMetrics: WorkflowMetrics[];
 	recentRuns: RecentRun[];
+	/** Commits that modified workflow files in the chart window (for vertical markers). */
+	workflowFileCommits?: WorkflowFileCommit[];
+	dora?: DoraMetrics;
 }
 
 export interface RecentRun {

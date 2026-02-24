@@ -7,7 +7,14 @@
 		if (page.data.user) {
 			goto('/dashboard');
 		} else {
-			goto('/auth/login');
+			// Forward any Supabase error params (e.g. bad_oauth_callback) to the login page
+			const params = new URLSearchParams(window.location.search);
+			const error = params.get('error_description') ?? params.get('error');
+			if (error) {
+				goto('/auth/login?error=' + encodeURIComponent(error));
+			} else {
+				goto('/auth/login');
+			}
 		}
 	});
 </script>

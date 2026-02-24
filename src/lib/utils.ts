@@ -61,6 +61,20 @@ export function percentile(sorted: number[], p: number): number {
 	return sorted[Math.max(0, index)];
 }
 
+/** Tailwind class for success rate: green ≥90%, yellow ≥70%, red below. */
+export function successRateColor(rate: number): string {
+	if (rate >= 90) return 'text-green-500';
+	if (rate >= 70) return 'text-yellow-500';
+	return 'text-red-500';
+}
+
+/** Tailwind class for failure rate: green ≤10%, yellow ≤30%, red above. */
+export function failureRateColor(failureRate: number): string {
+	if (failureRate <= 10) return 'text-green-500';
+	if (failureRate <= 30) return 'text-yellow-500';
+	return 'text-red-500';
+}
+
 export function conclusionColor(conclusion: string | null | undefined): string {
 	switch (conclusion) {
 		case 'success':

@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 
@@ -8,16 +7,18 @@
 	let error = $state<string | null>(null);
 
 	onMount(() => {
-		if (data.user) goto('/dashboard');
-		// Show error from query string (e.g. /auth/login?error=...)
-		const err = new URL(page.url).searchParams.get('error');
+		if (data.user) {
+			goto('/dashboard');
+			return;
+		}
+		const params = new URLSearchParams(window.location.search);
+		const err = params.get('error_description') ?? params.get('error');
 		if (err) error = decodeURIComponent(err);
 	});
 
 	function signInWithGitHub() {
 		loading = true;
 		error = null;
-		// OAuth is initiated by the server; full navigation so server handles redirect
 		window.location.href = '/auth/login/github';
 	}
 </script>

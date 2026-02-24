@@ -1,5 +1,10 @@
 import { redirect, error } from '@sveltejs/kit';
-import { createOctokit, buildWorkflowDetailData } from '$lib/server/github';
+import { createOctokit, buildWorkflowDetailData, isGitHubUnauthorizedError } from '$lib/server/github';
+import { createSupabaseAdminClient } from '$lib/server/supabase';
+import {
+	getCachedWorkflowDetailRuns,
+	setCachedWorkflowDetailRuns
+} from '$lib/server/workflow-runs-cache';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals, url, params }) => {
@@ -41,17 +46,62 @@ export const load: PageServerLoad = async ({ locals, url, params }) => {
 
 	const hasMistralKey = !!settings?.mistral_api_key;
 
+	// 30-day window for cache key
+	const thirtyDaysAgo = new Date();
+	thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+	const windowStart = thirtyDaysAgo.toISOString().slice(0, 10);
+
+	const cachedRuns = await getCachedWorkflowDetailRuns(
+		locals.supabase,
+		user.id,
+		ownerParam,
+		repoParam,
+		workflowId,
+		windowStart
+	);
+
 	const octokit = createOctokit(connection.access_token);
 
 	try {
-		const detailData = await buildWorkflowDetailData(octokit, ownerParam, repoParam, workflowId);
+		const detailData = await buildWorkflowDetailData(
+			octokit,
+			ownerParam,
+			repoParam,
+			workflowId,
+			{
+				cachedRuns: cachedRuns ?? undefined,
+				onRunsFetched: async (runs) => {
+					try {
+						const admin = createSupabaseAdminClient();
+						const supabaseForWrite = admin ?? locals.supabase;
+						const result = await setCachedWorkflowDetailRuns(
+							supabaseForWrite,
+							user.id,
+							ownerParam,
+							repoParam,
+							workflowId,
+							windowStart,
+							runs
+						);
+						if (!result.ok) {
+							console.warn('[workflow-detail] Cache write failed:', result.error);
+						}
+					} catch (e) {
+						console.error('[workflow-detail] Cache write error:', e);
+					}
+				}
+			}
+		);
 		return {
 			detailData,
 			owner: ownerParam,
 			repo: repoParam,
 			hasMistralKey
 		};
-	} catch (e) {
+	} catch (e: unknown) {
+		if (isGitHubUnauthorizedError(e)) {
+			throw redirect(303, '/auth/login?error=' + encodeURIComponent('GitHub token expired. Please sign in again to reconnect.'));
+		}
 		console.error('Failed to fetch workflow detail:', e);
 		throw error(500, 'Failed to fetch workflow data');
 	}

@@ -6,6 +6,7 @@ An open-source dashboard for GitHub Actions metrics with AI-powered optimization
 
 - **GitHub OAuth login** — Sign in with GitHub using `repo` and `read:org` scopes to access your workflows
 - **Repository overview dashboard** — Total runs, success rate, average duration, and active workflows with 30-day trends
+- **DORA metrics** — Deployment Frequency, Lead Time for Changes, Change Failure Rate, and Mean Time to Recovery over the last 30 days
 - **Run history chart** — Visual breakdown of success, failure, and cancelled runs over time
 - **Duration by workflow** — Bar chart comparing average duration across all workflows
 - **Recent runs table** — Filterable list of the latest runs with status, branch, actor, and duration
@@ -44,7 +45,9 @@ pnpm install
 ### 2. Create a Supabase project
 
 1. Create a new project at [supabase.com](https://supabase.com)
-2. Run the migration in `supabase/migrations/001_initial.sql` via the Supabase SQL editor
+2. **Run migrations** (choose one):
+   - **With Supabase CLI:** `supabase link --project-ref YOUR_PROJECT_REF` (ref is in the dashboard URL: `https://supabase.com/dashboard/project/YOUR_PROJECT_REF`), then `supabase db push`
+   - **Without CLI:** In Supabase Dashboard → **SQL Editor**, run each file in `supabase/migrations/` in order: `001_initial.sql`, `002_workflow_runs_cache.sql`, `003_workflow_runs_cache_cleanup.sql`, `004_workflow_detail_runs_cache.sql`
 3. **GitHub OAuth (use an OAuth App, not a GitHub App):**
   - Create a **GitHub OAuth App** at [GitHub → Settings → Developer settings → OAuth Apps → New OAuth App](https://github.com/settings/applications/new)
   - Set **Authorization callback URL** to your **Supabase** callback: `https://<your-project-ref>.supabase.co/auth/v1/callback` (find your project ref in Supabase Dashboard → Settings → API)
@@ -82,18 +85,18 @@ Connect your GitHub repository to Cloudflare Pages with these build settings:
 
 In the Cloudflare Pages dashboard → Settings → Environment Variables:
 
-
-| Variable                   | Description                              |
-| -------------------------- | ---------------------------------------- |
-| `PUBLIC_SUPABASE_URL`      | Your Supabase project URL                |
-| `PUBLIC_SUPABASE_ANON_KEY` | Your Supabase anon key (publishable key) |
-
+| Variable                   | Description                                                       |
+| -------------------------- | ----------------------------------------------------------------- |
+| `PUBLIC_SUPABASE_URL`      | Your Supabase project URL                                         |
+| `PUBLIC_SUPABASE_ANON_KEY` | Your Supabase anon key (publishable key)                          |
+| `PUBLIC_APP_URL`           | **Production only.** Your app URL, e.g. `https://your-project.pages.dev` (no trailing slash). When running on localhost, the app uses the request origin automatically so you can test OAuth locally. |
 
 ### 3. Update Supabase OAuth redirect URLs
 
-Add your Cloudflare Pages URL to the allowed redirect URLs in Supabase:
+Add the allowed redirect URLs in Supabase (Authentication → URL Configuration → Redirect URLs). For local dev and production:
 
 ```
+http://localhost:5173/auth/callback
 https://your-project.pages.dev/auth/callback
 https://your-custom-domain.com/auth/callback
 ```

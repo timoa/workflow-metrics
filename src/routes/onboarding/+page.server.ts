@@ -13,7 +13,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		.eq('user_id', user.id)
 		.single();
 
-	if (!connection) throw redirect(303, '/auth/login');
+	if (!connection) throw redirect(303, '/auth/login?error=' + encodeURIComponent('GitHub connection not found. Please sign in again.'));
 
 	const octokit = new Octokit({ auth: connection.access_token });
 

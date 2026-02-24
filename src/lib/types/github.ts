@@ -36,6 +36,12 @@ export interface GitHubWorkflowRun {
 		login: string;
 		avatar_url: string;
 	} | null;
+	/** Present when API returns it; used for DORA lead time (commit → run end). */
+	head_commit?: {
+		id?: string;
+		timestamp?: string;
+		message?: string;
+	} | null;
 }
 
 export interface GitHubJob {
