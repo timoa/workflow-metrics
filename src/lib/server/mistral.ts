@@ -1,10 +1,31 @@
 import { createMistral } from '@ai-sdk/mistral';
-import { streamText } from 'ai';
-import type { WorkflowMetrics } from '$lib/types/metrics';
+import { generateObject, generateText } from 'ai';
+import { z } from 'zod';
+import type { WorkflowMetrics, OptimizationResult, OptimizationItem } from '$lib/types/metrics';
 
 export function createMistralClient(apiKey: string) {
 	return createMistral({ apiKey });
 }
+
+const OptimizationItemSchema = z.object({
+	id: z.string(),
+	title: z.string(),
+	category: z.enum(['performance', 'cost', 'reliability', 'security', 'maintenance']),
+	explanation: z.string(),
+	codeExample: z.string().optional(),
+	estimatedImpact: z.string().optional(),
+	effort: z.enum(['Low', 'Medium', 'High'])
+});
+
+const OptimizationSchema = z.object({
+	optimizations: z.array(OptimizationItemSchema),
+	summary: z.object({
+		expectedAvgDuration: z.string().optional(),
+		expectedSuccessRate: z.string().optional(),
+		expectedP95Duration: z.string().optional(),
+		notes: z.string().optional()
+	})
+});
 
 export function buildOptimizationPrompt(
 	workflowName: string,
@@ -31,31 +52,98 @@ export function buildOptimizationPrompt(
 ${workflowYaml}
 \`\`\`
 
-### Please provide optimization recommendations in the following areas:
+### Instructions
 
-1. **Caching**: Identify opportunities to cache dependencies (npm, pip, cargo, etc.) to reduce install time.
-2. **Parallelization**: Steps or jobs that can run in parallel instead of sequentially.
-3. **Runner optimization**: Choose appropriate runner types; consider self-hosted runners if build times are long.
-4. **Conditional steps**: Skip unnecessary steps based on changed files or branch conditions.
-5. **Action versions**: Identify outdated actions that should be pinned to SHA for security.
-6. **Failure reduction**: Based on the ${metrics.failureCount} failures, suggest ways to improve reliability.
-7. **Quick wins**: Any small changes that would immediately improve performance or reliability.
+Return a JSON object with an "optimizations" array and a "summary" object.
 
-Format your response as a clear, structured report with concrete code examples where relevant.`;
+Each optimization must have:
+- id: a short kebab-case identifier (e.g. "add-npm-cache", "parallel-test-lint")
+- title: a short human-readable title (3-5 words, e.g. "Better npm caching", "Parallel test jobs")
+- category: one of "performance", "cost", "reliability", "security", "maintenance"
+- explanation: 2-4 sentences explaining the problem and the fix
+- codeExample: (optional) relevant YAML snippet showing the change
+- estimatedImpact: (optional) concise expected impact (e.g. "20-40% faster builds", "50% fewer failures")
+- effort: "Low", "Medium", or "High"
+
+Cover these areas where applicable:
+1. Caching (npm, pip, cargo, etc.)
+2. Parallelization (jobs or steps that can run concurrently)
+3. Runner optimization
+4. Conditional steps (skip work when files haven't changed)
+5. Action version pinning (security)
+6. Failure reduction based on the ${metrics.failureCount} failures
+7. Quick wins
+
+The "summary" object should have:
+- expectedAvgDuration: target average duration range after all changes (e.g. "40-60s")
+- expectedSuccessRate: target success rate range (e.g. "85-95%")
+- expectedP95Duration: target P95 range (e.g. "70-90s")
+- notes: (optional) one sentence with any important caveats`;
 }
 
-export async function streamWorkflowOptimization(
+export async function generateOptimizationReport(
 	apiKey: string,
 	workflowName: string,
 	workflowYaml: string,
 	metrics: WorkflowMetrics
-) {
+): Promise<{ result: OptimizationResult; usage: { promptTokens: number; completionTokens: number } }> {
 	const mistral = createMistralClient(apiKey);
 	const prompt = buildOptimizationPrompt(workflowName, workflowYaml, metrics);
 
-	return streamText({
+	const { object, usage } = await generateObject({
 		model: mistral('mistral-large-latest'),
-		messages: [{ role: 'user', content: prompt }],
+		schema: OptimizationSchema,
+		prompt,
 		maxTokens: 4096
 	});
+
+	return {
+		result: object as OptimizationResult,
+		usage: {
+			promptTokens: usage.promptTokens,
+			completionTokens: usage.completionTokens
+		}
+	};
+}
+
+export async function generateOptimizedYaml(
+	apiKey: string,
+	workflowName: string,
+	originalYaml: string,
+	selectedOptimizations: OptimizationItem[]
+): Promise<string> {
+	const mistral = createMistralClient(apiKey);
+
+	const optimizationDescriptions = selectedOptimizations
+		.map((opt, i) => `${i + 1}. **${opt.title}** (${opt.category}): ${opt.explanation}${opt.codeExample ? `\n\nExample:\n\`\`\`yaml\n${opt.codeExample}\n\`\`\`` : ''}`)
+		.join('\n\n');
+
+	const prompt = `You are an expert in GitHub Actions workflow optimization. Apply the following optimizations to the workflow YAML.
+
+## Workflow: ${workflowName}
+
+### Original YAML
+\`\`\`yaml
+${originalYaml}
+\`\`\`
+
+### Optimizations to apply
+
+${optimizationDescriptions}
+
+### Instructions
+
+Return ONLY the complete, updated YAML file with all optimizations applied. Do not include any explanation, markdown fences, or extra text — just the raw YAML content starting with the first line of the workflow file.`;
+
+	const { text } = await generateText({
+		model: mistral('mistral-large-latest'),
+		prompt,
+		maxTokens: 4096
+	});
+
+	// Strip any accidental markdown fences if the model wraps the output
+	return text
+		.replace(/^```ya?ml\n?/i, '')
+		.replace(/\n?```\s*$/i, '')
+		.trim();
 }

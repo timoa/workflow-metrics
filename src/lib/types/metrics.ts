@@ -105,3 +105,36 @@ export interface WorkflowDetailData {
 	jobBreakdown: JobBreakdown[];
 	recentRuns: RecentRun[];
 }
+
+export type OptimizationCategory = 'performance' | 'cost' | 'reliability' | 'security' | 'maintenance';
+export type OptimizationEffort = 'Low' | 'Medium' | 'High';
+
+export interface OptimizationItem {
+	id: string;
+	title: string;
+	category: OptimizationCategory;
+	explanation: string;
+	codeExample?: string;
+	estimatedImpact?: string;
+	effort: OptimizationEffort;
+}
+
+export interface OptimizationSummary {
+	expectedAvgDuration?: string;
+	expectedSuccessRate?: string;
+	expectedP95Duration?: string;
+	notes?: string;
+}
+
+export interface OptimizationResult {
+	optimizations: OptimizationItem[];
+	summary: OptimizationSummary;
+}
+
+export interface OptimizationHistoryEntry {
+	result: OptimizationResult;
+	cached: boolean;
+	createdAt: string;
+	promptTokens?: number;
+	completionTokens?: number;
+}

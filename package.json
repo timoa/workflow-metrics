@@ -24,6 +24,7 @@
 	},
 	"dependencies": {
 		"@ai-sdk/mistral": "^1.2.8",
+		"@fortawesome/fontawesome-free": "^7.2.0",
 		"@octokit/rest": "^21.1.1",
 		"@supabase/ssr": "^0.5.0",
 		"@supabase/supabase-js": "^2.49.4",
@@ -31,7 +32,8 @@
 		"dompurify": "^3.3.1",
 		"highlight.js": "^11.11.1",
 		"layerchart": "^1.0.13",
-		"marked": "^17.0.3"
+		"marked": "^17.0.3",
+		"zod": "^3.25.76"
 	},
 	"devDependencies": {
 		"@eslint/js": "^9.26.0",

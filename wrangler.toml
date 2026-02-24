@@ -4,9 +4,12 @@ compatibility_flags = ["nodejs_als"]
 pages_build_output_dir = ".svelte-kit/cloudflare"
 
 [vars]
-# Set via Cloudflare dashboard secrets, not here
+# Set via Cloudflare dashboard secrets, not here:
 # PUBLIC_SUPABASE_URL = ""
 # PUBLIC_SUPABASE_ANON_KEY = ""
+# SUPABASE_SERVICE_ROLE_KEY = ""
+# GITHUB_WRITE_CLIENT_ID = ""    ← GitHub OAuth App for "Apply as PR" write access
+# GITHUB_WRITE_CLIENT_SECRET = ""
 
 # Optional KV for caching GitHub API responses (uncomment when needed):
 # [[kv_namespaces]]

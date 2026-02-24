@@ -1,12 +1,14 @@
-import { error } from '@sveltejs/kit';
-import { streamWorkflowOptimization } from '$lib/server/mistral';
+import { error, json } from '@sveltejs/kit';
+import { generateOptimizationReport } from '$lib/server/mistral';
 import { Octokit } from '@octokit/rest';
 import type { RequestHandler } from './$types';
 import type { WorkflowMetrics } from '$lib/types/metrics';
 
-export const POST: RequestHandler = async ({ request, locals }) => {
+export const POST: RequestHandler = async ({ request, url, locals }) => {
 	const { user } = await locals.safeGetSession();
 	if (!user) throw error(401, 'Unauthorized');
+
+	const force = url.searchParams.get('force') === 'true';
 
 	const body = await request.json();
 	const { workflowId, workflowName, workflowPath, owner, repo, metrics } = body as {
@@ -20,6 +22,26 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 	if (!owner || !repo || !workflowId) {
 		throw error(400, 'Missing required fields');
+	}
+
+	// Check optimization history cache (skip if force=true)
+	if (!force) {
+		const { data: existing } = await locals.supabase
+			.from('optimization_history')
+			.select('result, prompt_tokens, completion_tokens, created_at')
+			.eq('user_id', user.id)
+			.eq('workflow_id', workflowId)
+			.single();
+
+		if (existing) {
+			return json({
+				cached: true,
+				result: existing.result,
+				createdAt: existing.created_at,
+				promptTokens: existing.prompt_tokens,
+				completionTokens: existing.completion_tokens
+			});
+		}
 	}
 
 	// Get user settings with Mistral API key
@@ -60,34 +82,36 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		workflowYaml = `# Could not fetch workflow YAML for ${workflowPath}`;
 	}
 
-	// Stream the optimization and append usage when done
-	const result = await streamWorkflowOptimization(
+	const { result, usage } = await generateOptimizationReport(
 		settings.mistral_api_key,
 		workflowName,
 		workflowYaml,
 		metrics
 	);
 
-	const encoder = new TextEncoder();
-	const stream = new ReadableStream({
-		async start(controller) {
-			try {
-				for await (const chunk of result.textStream) {
-					controller.enqueue(encoder.encode(chunk));
-				}
-				const usage = await result.usage;
-				if (usage) {
-					controller.enqueue(
-						encoder.encode(`\n__USAGE__${JSON.stringify({ promptTokens: usage.promptTokens, completionTokens: usage.completionTokens })}\n`)
-					);
-				}
-			} finally {
-				controller.close();
-			}
-		}
-	});
+	// Upsert into optimization_history
+	const now = new Date().toISOString();
+	await locals.supabase
+		.from('optimization_history')
+		.upsert(
+			{
+				user_id: user.id,
+				workflow_id: workflowId,
+				owner,
+				repo,
+				result,
+				prompt_tokens: usage.promptTokens,
+				completion_tokens: usage.completionTokens,
+				created_at: now
+			},
+			{ onConflict: 'user_id,workflow_id' }
+		);
 
-	return new Response(stream, {
-		headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+	return json({
+		cached: false,
+		result,
+		createdAt: now,
+		promptTokens: usage.promptTokens,
+		completionTokens: usage.completionTokens
 	});
 };

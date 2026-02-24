@@ -30,14 +30,7 @@
 				onclick={() => (showOptimize = !showOptimize)}
 				class="flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg px-4 py-2 text-sm font-medium transition-colors"
 			>
-				<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-					<path d="M15 4V2"/>
-					<path d="M15 16v-2"/>
-					<path d="m12 19 7-7"/>
-					<path d="M5 19l7-7"/>
-					<path d="M2 12h2"/>
-					<path d="M20 12h2"/>
-				</svg>
+				<i class="fa-solid fa-wand-magic-sparkles size-4 shrink-0" aria-hidden="true"></i>
 				Optimize with AI
 			</button>
 		{:else}
@@ -46,14 +39,7 @@
 				class="flex items-center gap-2 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 rounded-lg px-4 py-2 text-sm transition-colors"
 				title="Add Mistral API key in settings to enable AI optimization"
 			>
-				<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-					<path d="M15 4V2"/>
-					<path d="M15 16v-2"/>
-					<path d="m12 19 7-7"/>
-					<path d="M5 19l7-7"/>
-					<path d="M2 12h2"/>
-					<path d="M20 12h2"/>
-				</svg>
+				<i class="fa-solid fa-wand-magic-sparkles size-4 shrink-0" aria-hidden="true"></i>
 				Optimize with AI
 			</a>
 		{/if}
