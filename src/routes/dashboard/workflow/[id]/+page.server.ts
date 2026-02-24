@@ -51,7 +51,7 @@ export const load: PageServerLoad = async ({ locals, url, params }) => {
 	thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 	const windowStart = thirtyDaysAgo.toISOString().slice(0, 10);
 
-	const cachedRuns = await getCachedWorkflowDetailRuns(
+	const cachedResult = await getCachedWorkflowDetailRuns(
 		locals.supabase,
 		user.id,
 		ownerParam,
@@ -69,7 +69,7 @@ export const load: PageServerLoad = async ({ locals, url, params }) => {
 			repoParam,
 			workflowId,
 			{
-				cachedRuns: cachedRuns ?? undefined,
+				cachedRuns: cachedResult?.runs,
 				onRunsFetched: async (runs) => {
 					try {
 						const admin = createSupabaseAdminClient();

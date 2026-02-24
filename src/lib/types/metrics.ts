@@ -78,6 +78,8 @@ export interface DashboardData {
 	/** Commits that modified workflow files in the chart window (for vertical markers). */
 	workflowFileCommits?: WorkflowFileCommit[];
 	dora?: DoraMetrics;
+	/** The number of days covered by this data (e.g. 7 or 30). */
+	timeWindowDays: number;
 }
 
 export interface RecentRun {

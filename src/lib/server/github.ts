@@ -69,6 +69,7 @@ export async function fetchWorkflowRuns(
 }
 
 export type TimingCollector = (label: string, ms: number, meta?: Record<string, number>) => void;
+export type ProgressCallback = (fetched: number, total: number, page: number) => void;
 
 /** Fetches all workflow runs for the repo in the given date range by paginating through the API. */
 export async function fetchAllWorkflowRunsForRepo(
@@ -76,10 +77,12 @@ export async function fetchAllWorkflowRunsForRepo(
 	owner: string,
 	repo: string,
 	created: string,
-	onTiming?: TimingCollector
+	onTiming?: TimingCollector,
+	onProgress?: ProgressCallback
 ): Promise<GitHubWorkflowRun[]> {
 	const allRuns: GitHubWorkflowRun[] = [];
 	let page = 1;
+	let totalCount: number | null = null;
 	const totalStart = typeof performance !== 'undefined' ? performance.now() : 0;
 	while (true) {
 		const pageStart = typeof performance !== 'undefined' ? performance.now() : 0;
@@ -91,12 +94,17 @@ export async function fetchAllWorkflowRunsForRepo(
 			page
 		});
 		const runs = (data.workflow_runs ?? []) as unknown as GitHubWorkflowRun[];
+		// Capture total_count from first page response
+		if (totalCount === null) {
+			totalCount = typeof data.total_count === 'number' ? data.total_count : runs.length;
+		}
 		if (onTiming && typeof performance !== 'undefined') {
 			onTiming(`GitHub: listWorkflowRunsForRepo page ${page}`, performance.now() - pageStart, {
 				runsInPage: runs.length
 			});
 		}
 		allRuns.push(...runs);
+		onProgress?.(allRuns.length, totalCount, page);
 		if (runs.length < 100) break;
 		page++;
 	}
@@ -349,6 +357,10 @@ export interface BuildDashboardDataOptions {
 	cachedRuns?: GitHubWorkflowRun[];
 	/** Called with the fetched runs when we hit GitHub (so the caller can cache them). */
 	onRunsFetched?: (runs: GitHubWorkflowRun[]) => void;
+	/** Number of days to look back. Defaults to 30. Use 7 for a fast first load. */
+	days?: number;
+	/** Called after each paginated page when fetching from GitHub. Useful for streaming progress. */
+	onProgress?: ProgressCallback;
 }
 
 export async function buildDashboardData(
@@ -357,15 +369,15 @@ export async function buildDashboardData(
 	repo: string,
 	options?: BuildDashboardDataOptions
 ): Promise<DashboardData> {
-	const { onTiming, cachedRuns, onRunsFetched } = options ?? {};
+	const { onTiming, cachedRuns, onRunsFetched, onProgress, days = 30 } = options ?? {};
 	const now = typeof performance !== 'undefined' ? () => performance.now() : () => 0;
 	const timing = (label: string, ms: number, meta?: Record<string, number>) => {
 		onTiming?.(label, ms, meta);
 	};
 
-	const thirtyDaysAgo = new Date();
-	thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-	const created = `>=${thirtyDaysAgo.toISOString().slice(0, 10)}`;
+	const windowStart = new Date();
+	windowStart.setDate(windowStart.getDate() - days);
+	const created = `>=${windowStart.toISOString().slice(0, 10)}`;
 
 	let runs: GitHubWorkflowRun[];
 	let workflows: GitHubWorkflow[];
@@ -377,7 +389,7 @@ export async function buildDashboardData(
 		const start = now();
 		[workflows, workflowFileCommits] = await Promise.all([
 			fetchWorkflows(octokit, owner, repo),
-			fetchWorkflowFileCommits(octokit, owner, repo, thirtyDaysAgo).catch(
+			fetchWorkflowFileCommits(octokit, owner, repo, windowStart).catch(
 				() => [] as WorkflowFileCommit[]
 			)
 		]);
@@ -394,10 +406,10 @@ export async function buildDashboardData(
 				timing('GitHub: fetchWorkflows', now() - start, { count: w.length });
 				return w;
 			})(),
-			fetchAllWorkflowRunsForRepo(octokit, owner, repo, created, onTiming),
+			fetchAllWorkflowRunsForRepo(octokit, owner, repo, created, onTiming, onProgress),
 			(async () => {
 				const start = now();
-				const c = await fetchWorkflowFileCommits(octokit, owner, repo, thirtyDaysAgo).catch(
+				const c = await fetchWorkflowFileCommits(octokit, owner, repo, windowStart).catch(
 					() => [] as WorkflowFileCommit[]
 				);
 				timing('GitHub: fetchWorkflowFileCommits', now() - start, { count: c.length });
@@ -443,7 +455,8 @@ export async function buildDashboardData(
 		workflowMetrics,
 		recentRuns,
 		workflowFileCommits,
-		dora
+		dora,
+		timeWindowDays: days
 	};
 }
 

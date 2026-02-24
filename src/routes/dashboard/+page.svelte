@@ -11,53 +11,203 @@
 
 	let { data }: { data: PageData } = $props();
 
+	// Dashboard data — may hold 7-day data while 30-day loads in background
 	let dashboardData = $state<DashboardData | null>(null);
-	let loading = $state(true);
+	// True only during the initial load (before we have any data to show)
+	let initialLoading = $state(true);
+	// True when a background 30-day refresh is in progress while 7-day data is already shown
+	let backgroundLoading = $state(false);
+	// True when the data shown is stale (served from cache older than TTL)
+	let isStale = $state(false);
 	let errorMessage = $state<string | null>(null);
+
+	// Progress state for the SSE loading bar (only used during cache-miss fetches)
+	type LoadPhase = 'connecting' | 'fetching' | 'computing' | null;
+	let loadPhase = $state<LoadPhase>(null);
+	let progressFetched = $state(0);
+	let progressTotal = $state(0);
+
+	// Derived progress percentage (clamped so bar always moves forward)
+	const progressPct = $derived(
+		progressTotal > 0 ? Math.min(Math.round((progressFetched / progressTotal) * 100), 99) : 0
+	);
+
+	// Delay before showing the progress UI — avoids flash for fast cache hits
+	let showProgress = $state(false);
+	let progressTimer: ReturnType<typeof setTimeout> | null = null;
+
+	function startProgressTimer() {
+		progressTimer = setTimeout(() => {
+			showProgress = true;
+		}, 300);
+	}
+
+	function clearProgressTimer() {
+		if (progressTimer) {
+			clearTimeout(progressTimer);
+			progressTimer = null;
+		}
+		showProgress = false;
+	}
+
+	/**
+	 * Fetch dashboard data for a given number of days.
+	 * Returns { data, isStale } or throws on error.
+	 */
+	async function fetchDashboardData(
+		owner: string,
+		name: string,
+		days: number,
+		signal: AbortSignal,
+		onProgress?: (fetched: number, total: number) => void
+	): Promise<{ data: DashboardData; isStale: boolean }> {
+		const endpoint = `/api/dashboard/data?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(name)}&days=${days}`;
+
+		// Try SSE first for cache-miss case (gives us progress events)
+		const res = await fetch(endpoint, {
+			signal,
+			headers: { Accept: 'text/event-stream' }
+		});
+
+		if (res.status === 401) {
+			goto('/auth/login?error=' + encodeURIComponent('Session expired. Please sign in again.'));
+			throw new Error('Unauthorized');
+		}
+		if (!res.ok) {
+			let msg = res.statusText;
+			try {
+				const body = await res.json();
+				msg = (body as { message?: string })?.message ?? msg;
+			} catch {
+				// ignore non-JSON response
+			}
+			throw new Error(msg);
+		}
+
+		const stale = res.headers.get('X-Data-Stale') === 'true';
+		const contentType = res.headers.get('Content-Type') ?? '';
+
+		// JSON response (cache hit)
+		if (!contentType.includes('text/event-stream')) {
+			const d = (await res.json()) as DashboardData;
+			return { data: d, isStale: stale };
+		}
+
+		// SSE stream (cache miss — parse progress events)
+		if (!res.body) throw new Error('No response body for SSE stream');
+
+		const reader = res.body.getReader();
+		const decoder = new TextDecoder();
+		let buffer = '';
+
+		while (true) {
+			const { done, value } = await reader.read();
+			if (done) break;
+			buffer += decoder.decode(value, { stream: true });
+
+			// Parse complete SSE messages (separated by double newline)
+			const messages = buffer.split('\n\n');
+			buffer = messages.pop() ?? '';
+
+			for (const msg of messages) {
+				if (!msg.trim()) continue;
+				const eventMatch = msg.match(/^event:\s*(.+)$/m);
+				const dataMatch = msg.match(/^data:\s*(.+)$/m);
+				if (!eventMatch || !dataMatch) continue;
+
+				const eventName = eventMatch[1].trim();
+				let payload: unknown;
+				try {
+					payload = JSON.parse(dataMatch[1]);
+				} catch {
+					continue;
+				}
+
+				if (eventName === 'progress') {
+					const p = payload as { phase: string; fetched?: number; total?: number };
+					if (p.phase === 'fetching' && p.fetched !== undefined && p.total !== undefined) {
+						onProgress?.(p.fetched, p.total);
+					} else if (p.phase === 'computing') {
+						loadPhase = 'computing';
+					}
+				} else if (eventName === 'complete') {
+					return { data: payload as DashboardData, isStale: false };
+				} else if (eventName === 'error') {
+					const e = payload as { message?: string };
+					throw new Error(e.message ?? 'Failed to load dashboard data.');
+				}
+			}
+		}
+
+		throw new Error('SSE stream ended without a complete event');
+	}
 
 	$effect(() => {
 		const owner = data.selectedRepo.owner;
 		const name = data.selectedRepo.name;
-		loading = true;
+
+		initialLoading = true;
+		backgroundLoading = false;
+		isStale = false;
 		errorMessage = null;
 		dashboardData = null;
+		loadPhase = 'connecting';
+		progressFetched = 0;
+		progressTotal = 0;
+		clearProgressTimer();
 
-		const url = `/api/dashboard/data?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(name)}`;
 		const ac = new AbortController();
+		startProgressTimer();
 
-		fetch(url, { signal: ac.signal })
-			.then(async (res) => {
-				if (res.status === 401) {
-					goto('/auth/login?error=' + encodeURIComponent('Session expired. Please sign in again.'));
-					return null;
-				}
-				if (!res.ok) {
-					let msg = res.statusText;
+		(async () => {
+			try {
+				// --- Phase 1: fast 7-day fetch ---
+				loadPhase = 'connecting';
+				const result7 = await fetchDashboardData(owner, name, 7, ac.signal, (fetched, total) => {
+					loadPhase = 'fetching';
+					progressFetched = fetched;
+					progressTotal = total;
+				});
+
+				// Guard against stale effect (repo changed mid-flight)
+				if (data.selectedRepo.owner !== owner || data.selectedRepo.name !== name) return;
+
+				dashboardData = result7.data;
+				isStale = result7.isStale;
+				initialLoading = false;
+				loadPhase = null;
+				clearProgressTimer();
+
+				// --- Phase 2: background 30-day fetch (extends the dashboard) ---
+				if (!ac.signal.aborted) {
+					backgroundLoading = true;
 					try {
-						const body = await res.json();
-						msg = (body as { message?: string })?.message ?? msg;
-					} catch {
-						// ignore non-JSON response
+						const result30 = await fetchDashboardData(owner, name, 30, ac.signal);
+						if (data.selectedRepo.owner !== owner || data.selectedRepo.name !== name) return;
+						dashboardData = result30.data;
+						isStale = result30.isStale;
+					} catch (e: unknown) {
+						if ((e as { name?: string }).name === 'AbortError') return;
+						// 30-day background fetch failed — keep 7-day data, don't show error
+						console.warn('[dashboard] Background 30-day fetch failed, showing 7-day data:', e);
+					} finally {
+						backgroundLoading = false;
 					}
-					throw new Error(msg);
 				}
-				return res.json() as Promise<DashboardData>;
-			})
-			.then((d) => {
-				if (d != null) dashboardData = d;
-			})
-			.catch((e: unknown) => {
+			} catch (e: unknown) {
 				if ((e as { name?: string }).name === 'AbortError') return;
+				if (data.selectedRepo.owner !== owner || data.selectedRepo.name !== name) return;
 				errorMessage = e instanceof Error ? e.message : 'Failed to load dashboard data.';
-			})
-			.finally(() => {
-				// Only clear loading if this fetch is still for the current repo (avoid race when switching repo)
-				if (data.selectedRepo.owner === owner && data.selectedRepo.name === name) {
-					loading = false;
-				}
-			});
+				initialLoading = false;
+				loadPhase = null;
+				clearProgressTimer();
+			}
+		})();
 
-		return () => ac.abort();
+		return () => {
+			ac.abort();
+			clearProgressTimer();
+		};
 	});
 
 	function switchRepo(fullName: string) {
@@ -66,6 +216,12 @@
 			goto(`/dashboard?owner=${found.owner}&repo=${found.name}`);
 		}
 	}
+
+	const timeWindowLabel = $derived(
+		backgroundLoading
+			? 'Last 7 days · loading 30-day data…'
+			: `Last ${dashboardData?.timeWindowDays ?? 30} days`
+	);
 </script>
 
 <svelte:head>
@@ -77,7 +233,17 @@
 	<div class="flex items-center justify-between">
 		<div class="space-y-1">
 			<h1 class="text-xl font-semibold text-foreground">{data.selectedRepo.full_name}</h1>
-			<p class="text-sm text-muted-foreground">GitHub Actions · Last 30 days</p>
+			<div class="flex items-center gap-2">
+				<p class="text-sm text-muted-foreground">GitHub Actions · {timeWindowLabel}</p>
+				{#if isStale && !backgroundLoading}
+					<span
+						class="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+					>
+						<span class="size-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+						Updating…
+					</span>
+				{/if}
+			</div>
 		</div>
 		<div class="flex items-center gap-3">
 			<div class="relative inline-block">
@@ -109,49 +275,87 @@
 		>
 			{errorMessage}
 		</div>
-	{:else if loading || !dashboardData}
+	{:else if initialLoading || !dashboardData}
 		<!-- Loading skeleton -->
 		<div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
 			{#each [1, 2, 3, 4] as _}
-				<div class="h-24 rounded-lg bg-muted/60 animate-pulse" />
+				<div class="h-24 rounded-lg bg-muted/60 animate-pulse"></div>
 			{/each}
 		</div>
 		<div class="grid grid-cols-1 lg:grid-cols-5 gap-4">
-			<div class="lg:col-span-3 h-64 rounded-lg bg-muted/60 animate-pulse" />
-			<div class="lg:col-span-2 h-64 rounded-lg bg-muted/60 animate-pulse" />
+			<div class="lg:col-span-3 h-64 rounded-lg bg-muted/60 animate-pulse"></div>
+			<div class="lg:col-span-2 h-64 rounded-lg bg-muted/60 animate-pulse"></div>
 		</div>
-		<div class="flex items-center gap-2 text-sm text-muted-foreground">
-			<svg
-				class="size-4 animate-spin"
-				xmlns="http://www.w3.org/2000/svg"
-				fill="none"
-				viewBox="0 0 24 24"
-				aria-hidden="true"
-			>
-				<circle
-					class="opacity-25"
-					cx="12"
-					cy="12"
-					r="10"
-					stroke="currentColor"
-					stroke-width="4"
-				></circle>
-				<path
-					class="opacity-75"
-					fill="currentColor"
-					d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-				></path>
-			</svg>
-			<span>Loading workflow data…</span>
-		</div>
+
+		<!-- Progress indicator (shown after 300ms delay to avoid flash on fast loads) -->
+		{#if showProgress && loadPhase}
+			<div class="space-y-2" role="status" aria-live="polite">
+				<div class="flex items-center justify-between text-xs text-muted-foreground">
+					<span>
+						{#if loadPhase === 'connecting'}
+							Connecting to GitHub…
+						{:else if loadPhase === 'fetching'}
+							Loading workflow runs · {progressFetched.toLocaleString()} / {progressTotal.toLocaleString()}
+						{:else if loadPhase === 'computing'}
+							Analyzing metrics…
+						{/if}
+					</span>
+					{#if loadPhase === 'fetching' && progressTotal > 0}
+						<span class="tabular-nums">{progressPct}%</span>
+					{/if}
+				</div>
+				<div class="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+					{#if loadPhase === 'fetching' && progressTotal > 0}
+						<!-- Determinate progress bar -->
+						<div
+							class="h-full rounded-full bg-primary transition-all duration-300 ease-out"
+							style="width: {progressPct}%"
+							role="progressbar"
+							aria-valuenow={progressPct}
+							aria-valuemin={0}
+							aria-valuemax={100}
+						></div>
+					{:else}
+						<!-- Indeterminate bar for connecting / computing phases -->
+						<div class="h-full w-1/3 rounded-full bg-primary animate-[shimmer_1.5s_ease-in-out_infinite]"></div>
+					{/if}
+				</div>
+			</div>
+		{:else if !showProgress}
+			<!-- Minimal spinner before the 300ms delay -->
+			<div class="flex items-center gap-2 text-sm text-muted-foreground">
+				<svg
+					class="size-4 animate-spin"
+					xmlns="http://www.w3.org/2000/svg"
+					fill="none"
+					viewBox="0 0 24 24"
+					aria-hidden="true"
+				>
+					<circle
+						class="opacity-25"
+						cx="12"
+						cy="12"
+						r="10"
+						stroke="currentColor"
+						stroke-width="4"
+					></circle>
+					<path
+						class="opacity-75"
+						fill="currentColor"
+						d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+					></path>
+				</svg>
+				<span>Loading workflow data…</span>
+			</div>
+		{/if}
 	{:else}
 		<!-- Metric cards -->
 		<div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
 			<MetricCard
 				title="Total Runs"
 				value={dashboardData.totalRuns.toLocaleString()}
-				subtitle="last 30 days"
-				help="Total number of workflow runs that were triggered in the last 30 days, including success, failure, and cancelled."
+				subtitle="last {dashboardData.timeWindowDays} days"
+				help="Total number of workflow runs that were triggered in the last {dashboardData.timeWindowDays} days, including success, failure, and cancelled."
 				icon='<svg class="size-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>'
 			/>
 			<MetricCard
@@ -166,7 +370,7 @@
 				title="Avg Duration"
 				value={formatDuration(dashboardData.avgDurationMs)}
 				subtitle="per run"
-				help="Average time from when a run started until it completed, across all completed runs in the last 30 days."
+				help="Average time from when a run started until it completed, across all completed runs in the last {dashboardData.timeWindowDays} days."
 				icon='<svg class="size-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
 			/>
 			<MetricCard
@@ -178,11 +382,22 @@
 			/>
 		</div>
 
-		<!-- DORA metrics (30-day window) -->
+		<!-- DORA metrics -->
 		{#if dashboardData.dora}
 			<div class="space-y-3">
 				<div class="flex items-center gap-2">
-					<p class="text-sm font-medium text-muted-foreground">DORA metrics (30-day window)</p>
+					<p class="text-sm font-medium text-muted-foreground">
+						DORA metrics ({dashboardData.timeWindowDays}-day window)
+					</p>
+					{#if backgroundLoading}
+						<span class="inline-flex items-center gap-1 text-xs text-muted-foreground">
+							<svg class="size-3 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+								<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+								<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+							</svg>
+							Loading 30-day…
+						</span>
+					{/if}
 					<span class="group relative inline-flex flex-shrink-0">
 						<button
 							type="button"
@@ -268,3 +483,10 @@
 		/>
 	{/if}
 </div>
+
+<style>
+	@keyframes shimmer {
+		0% { transform: translateX(-100%); }
+		100% { transform: translateX(400%); }
+	}
+</style>
