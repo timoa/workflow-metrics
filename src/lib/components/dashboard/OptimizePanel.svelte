@@ -1,12 +1,13 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
+	import { fade } from 'svelte/transition';
 	import hljs from 'highlight.js/lib/core';
 	import yaml from 'highlight.js/lib/languages/yaml';
 	import bash from 'highlight.js/lib/languages/bash';
 	import json from 'highlight.js/lib/languages/json';
 	import javascript from 'highlight.js/lib/languages/javascript';
 	import { tick } from 'svelte';
-	import type { WorkflowMetrics, OptimizationResult, OptimizationItem, OptimizationHistoryEntry } from '$lib/types/metrics';
+	import type { WorkflowMetrics, OptimizationHistoryEntry } from '$lib/types/metrics';
 
 	hljs.registerLanguage('yaml', yaml);
 	hljs.registerLanguage('bash', bash);
@@ -29,7 +30,68 @@
 	let error = $state<string | null>(null);
 	let entry = $state<OptimizationHistoryEntry | null>(null);
 
-	// Accordion open state: Set of item IDs
+	// ── Loading step tracking ─────────────────────────────────────────────────
+	const STEP_ORDER = ['checking-cache', 'fetching-yaml', 'ai-analyzing', 'saving'] as const;
+	type StepId = typeof STEP_ORDER[number];
+
+	const STEP_LABELS: Record<StepId, string> = {
+		'checking-cache': 'Checking optimization cache',
+		'fetching-yaml':  'Fetching workflow YAML',
+		'ai-analyzing':   'Analyzing with Mistral AI',
+		'saving':         'Saving recommendations'
+	};
+
+	// Messages cycled client-side during the long AI analysis phase
+	const AI_MESSAGES = [
+		'Analyzing workflow structure…',
+		'Reviewing security practices…',
+		'Reviewing performance optimizations…',
+		'Reviewing cost efficiency…',
+		'Reviewing reliability patterns…',
+		'Reviewing maintenance opportunities…',
+		'Generating recommendations…'
+	];
+
+	let currentStep = $state<StepId | null>(null);
+	let completedSteps = $state(new Set<StepId>());
+	let currentMessage = $state('');
+	let messageKey = $state(0); // increment to trigger fade transition
+
+	let categoryTimer: ReturnType<typeof setInterval> | null = null;
+	let categoryIndex = 0;
+
+	function setMessage(msg: string) {
+		currentMessage = msg;
+		messageKey++;
+	}
+
+	function startCategoryAnimation() {
+		categoryIndex = 0;
+		setMessage(AI_MESSAGES[0]);
+		categoryTimer = setInterval(() => {
+			categoryIndex++;
+			if (categoryIndex >= AI_MESSAGES.length - 1) {
+				// Stay on "Generating recommendations…" — don't loop back
+				setMessage(AI_MESSAGES[AI_MESSAGES.length - 1]);
+				stopCategoryAnimation();
+			} else {
+				setMessage(AI_MESSAGES[categoryIndex]);
+			}
+		}, 3500);
+	}
+
+	function stopCategoryAnimation() {
+		if (categoryTimer) {
+			clearInterval(categoryTimer);
+			categoryTimer = null;
+		}
+	}
+
+	const progressPct = $derived(
+		Math.round((completedSteps.size / STEP_ORDER.length) * 100)
+	);
+
+	// ── Accordion open state ──────────────────────────────────────────────────
 	let openItems = $state(new Set<string>());
 	// Checked items for PR creation
 	let checkedItems = $state(new Set<string>());
@@ -39,9 +101,10 @@
 	let prError = $state<string | null>(null);
 	let prUrl = $state<string | null>(null);
 
-	// Copy feedback: id of the item that was just copied (clear after short delay)
+	// Copy feedback
 	let copiedId = $state<string | null>(null);
 	let copiedAll = $state(false);
+
 	async function copyCode(code: string, id: string) {
 		try {
 			await navigator.clipboard.writeText(code);
@@ -51,15 +114,14 @@
 			// ignore
 		}
 	}
-	/** Copy all selected optimizations' code in one block (for manual paste when Apply as PR isn't available). */
+
 	async function copySelectedCode() {
 		if (selectedOptimizations.length === 0) return;
 		const parts = selectedOptimizations.map(
 			(o) => `# --- ${o.title} ---\n${stripCodeFences(o.codeExample ?? '')}`
 		);
-		const text = parts.join('\n\n');
 		try {
-			await navigator.clipboard.writeText(text);
+			await navigator.clipboard.writeText(parts.join('\n\n'));
 			copiedAll = true;
 			setTimeout(() => (copiedAll = false), 2000);
 		} catch (_) {
@@ -72,6 +134,9 @@
 		error = null;
 		prUrl = null;
 		prError = null;
+		currentStep = null;
+		completedSteps = new Set();
+		stopCategoryAnimation();
 
 		try {
 			const response = await fetch(`/api/optimize${force ? '?force=true' : ''}`, {
@@ -80,19 +145,64 @@
 				body: JSON.stringify({ workflowId, workflowName, workflowPath, owner, repo, metrics })
 			});
 
-			if (!response.ok) {
-				const data = await response.json();
-				throw new Error(data.error ?? data.message ?? 'Optimization failed');
+			if (!response.ok || !response.body) {
+				const data = await response.json().catch(() => ({}));
+				throw new Error((data as { error?: string; message?: string }).error ?? (data as { message?: string }).message ?? 'Optimization failed');
 			}
 
-			const data = await response.json() as OptimizationHistoryEntry;
-			entry = data;
-			openItems = new Set();
-			checkedItems = new Set();
+			// Parse SSE stream
+			const reader = response.body.getReader();
+			const decoder = new TextDecoder();
+			let buffer = '';
+
+			outer: while (true) {
+				const { done, value } = await reader.read();
+				if (done) break;
+				buffer += decoder.decode(value, { stream: true });
+
+				const messages = buffer.split('\n\n');
+				buffer = messages.pop() ?? '';
+
+				for (const msg of messages) {
+					if (!msg.trim()) continue;
+					const eventMatch = msg.match(/^event:\s*(.+)$/m);
+					const dataMatch = msg.match(/^data:\s*(.+)$/m);
+					if (!eventMatch || !dataMatch) continue;
+
+					const eventName = eventMatch[1].trim();
+					let payload: unknown;
+					try { payload = JSON.parse(dataMatch[1]); } catch { continue; }
+
+					if (eventName === 'phase') {
+						const p = payload as { step: StepId; message: string };
+						// Mark previous step complete
+						if (currentStep) {
+							completedSteps = new Set([...completedSteps, currentStep]);
+						}
+						currentStep = p.step;
+						stopCategoryAnimation();
+						if (p.step === 'ai-analyzing') {
+							startCategoryAnimation();
+						} else {
+							setMessage(p.message);
+						}
+					} else if (eventName === 'complete') {
+						const p = payload as OptimizationHistoryEntry;
+						entry = p;
+						openItems = new Set();
+						checkedItems = new Set();
+						break outer;
+					} else if (eventName === 'error') {
+						const p = payload as { message: string };
+						throw new Error(p.message);
+					}
+				}
+			}
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Unknown error';
 		} finally {
 			loading = false;
+			stopCategoryAnimation();
 		}
 	}
 
@@ -270,9 +380,11 @@
 	<div class="p-5 space-y-4">
 		<!-- Loading state -->
 		{#if loading}
-			<div class="flex flex-col items-center justify-center py-12 gap-4 text-muted-foreground">
-				<div class="size-12 rounded-full bg-primary/10 flex items-center justify-center">
-					<svg class="size-6 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+			<div class="flex flex-col items-center py-8 gap-5" role="status" aria-live="polite">
+
+				<!-- Animated icon -->
+				<div class="size-14 rounded-2xl bg-primary/10 flex items-center justify-center ai-icon-pulse">
+					<svg class="size-7 text-primary ai-wand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
 						<path d="M15 4V2"/>
 						<path d="M15 16v-2"/>
 						<path d="M8 9h2"/>
@@ -284,13 +396,62 @@
 						<path d="M12.2 6.2 11 5"/>
 					</svg>
 				</div>
-				<p class="text-sm font-medium text-foreground">Analyzing your workflow</p>
-				<p class="text-xs max-w-xs text-center">Mistral AI is reviewing metrics and YAML to suggest optimizations…</p>
-				<div class="flex gap-1 mt-2">
-					<span class="size-2 rounded-full bg-primary/40 animate-pulse" style="animation-delay: 0ms"></span>
-					<span class="size-2 rounded-full bg-primary/40 animate-pulse" style="animation-delay: 150ms"></span>
-					<span class="size-2 rounded-full bg-primary/40 animate-pulse" style="animation-delay: 300ms"></span>
+
+				<!-- Cycling message with fade transition -->
+				<div class="h-6 flex items-center justify-center">
+					{#key messageKey}
+						<p
+							in:fade={{ duration: 250, delay: 100 }}
+							out:fade={{ duration: 200 }}
+							class="text-sm font-medium text-foreground text-center"
+						>
+							{currentMessage}
+						</p>
+					{/key}
 				</div>
+
+				<!-- Step checklist -->
+				<div class="w-full max-w-xs space-y-2">
+					{#each STEP_ORDER as step}
+						{@const isDone = completedSteps.has(step)}
+						{@const isActive = currentStep === step}
+						<div class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {isActive ? 'bg-primary/8' : ''}">
+							<!-- Icon: done / active / pending -->
+							<div class="shrink-0 size-5 flex items-center justify-center">
+								{#if isDone}
+									<svg class="size-4 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-label="Done">
+										<path d="M5 12l5 5L20 7"/>
+									</svg>
+								{:else if isActive}
+									<svg class="size-4 text-primary animate-spin" viewBox="0 0 24 24" fill="none" aria-label="In progress">
+										<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+										<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+									</svg>
+								{:else}
+									<span class="size-2 rounded-full bg-muted-foreground/30 mx-auto block"></span>
+								{/if}
+							</div>
+							<span class="text-sm {isDone ? 'text-muted-foreground line-through decoration-muted-foreground/40' : isActive ? 'text-foreground font-medium' : 'text-muted-foreground/60'}">
+								{STEP_LABELS[step]}
+							</span>
+						</div>
+					{/each}
+				</div>
+
+				<!-- Progress bar -->
+				<div class="w-full max-w-xs">
+					<div class="h-1 w-full rounded-full bg-muted overflow-hidden">
+						<div
+							class="h-full rounded-full bg-primary transition-all duration-700 ease-out"
+							style="width: {progressPct}%"
+							role="progressbar"
+							aria-valuenow={progressPct}
+							aria-valuemin={0}
+							aria-valuemax={100}
+						></div>
+					</div>
+				</div>
+
 			</div>
 
 		<!-- Error state -->
@@ -542,6 +703,29 @@
 </div>
 
 <style>
+	/* AI loading animations */
+	.ai-icon-pulse {
+		animation: ai-icon-pulse 2.4s ease-in-out infinite;
+	}
+	@keyframes ai-icon-pulse {
+		0%, 100% { transform: scale(1); opacity: 0.9; }
+		50% { transform: scale(1.07); opacity: 1; }
+	}
+
+	.ai-wand {
+		animation: ai-wand-bob 2.4s ease-in-out infinite;
+		transform-origin: center;
+	}
+	@keyframes ai-wand-bob {
+		0%, 100% { transform: rotate(-6deg); }
+		50% { transform: rotate(6deg); }
+	}
+
+	/* Slight highlight for the active step row */
+	.bg-primary\/8 {
+		background-color: color-mix(in srgb, var(--color-primary, oklch(0.6 0.2 264)) 8%, transparent);
+	}
+
 	:global(.opt-code-block) {
 		background: #1e1e1e;
 		border-radius: 0.5rem;

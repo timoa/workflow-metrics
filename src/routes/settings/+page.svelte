@@ -7,7 +7,6 @@
 	let showMistralKey = $state(false);
 	let savingSettings = $state(false);
 	let savingAiSettings = $state(false);
-	let removingInstallation = $state<string | null>(null);
 	let syncing = $state(false);
 
 	// Local state for default repo so the select doesn’t reset when the form re-renders before submit
@@ -177,16 +176,20 @@
 				<p class="text-xs text-destructive">{form.syncError}</p>
 			{/if}
 			{#if form?.syncResult}
-				{#if form.syncResult.added > 0}
+				{#if form.syncResult.added > 0 || form.syncResult.removed > 0}
 					<p class="text-xs text-green-400">
-						Synced {form.syncResult.added} installation{form.syncResult.added > 1 ? 's' : ''} successfully.
+						{form.syncResult.added > 0 && form.syncResult.removed > 0
+							? `Synced: ${form.syncResult.added} added, ${form.syncResult.removed} removed.`
+							: form.syncResult.added > 0
+								? `Synced ${form.syncResult.added} installation${form.syncResult.added > 1 ? 's' : ''}.`
+								: `${form.syncResult.removed} installation${form.syncResult.removed > 1 ? 's' : ''} removed.`}
 					</p>
 				{:else if form.syncResult.notFound}
 					<p class="text-xs text-yellow-400">
 						No installations found on GitHub matching your accounts. Make sure you installed the app on the right account or organization.
 					</p>
 				{:else}
-					<p class="text-xs text-muted-foreground">Already up to date — no new installations found.</p>
+					<p class="text-xs text-muted-foreground">Already up to date.</p>
 				{/if}
 			{/if}
 
@@ -194,36 +197,44 @@
 			{#if data.installations.length > 0}
 				<div class="space-y-2">
 					{#each data.installations as inst}
-						<div class="flex items-center justify-between rounded-lg border border-green-500/20 bg-green-500/5 px-3 py-2">
-							<div class="space-y-0.5">
-								<p class="text-xs text-green-400 font-medium">
-									<span class="font-mono">@{inst.account_login}</span>
-									<span class="ml-1 text-muted-foreground font-normal">({inst.account_type})</span>
-								</p>
-								<p class="text-xs text-muted-foreground">
-									Installed {new Date(inst.created_at).toLocaleDateString()}
-								</p>
+							<div class="flex items-center justify-between rounded-lg border border-green-500/20 bg-green-500/5 px-3 py-2">
+							<div class="flex items-center gap-3 min-w-0">
+								{#if inst.account_avatar_url}
+									<img
+										src={inst.account_avatar_url}
+										alt=""
+										class="size-9 rounded-full shrink-0 bg-muted object-cover"
+										width="36"
+										height="36"
+									/>
+								{:else}
+									<div class="size-9 rounded-full shrink-0 bg-muted flex items-center justify-center text-muted-foreground text-xs font-medium" aria-hidden="true">
+										{(inst.account_name || inst.account_login).charAt(0).toUpperCase()}
+									</div>
+								{/if}
+								<div class="space-y-0.5 min-w-0">
+									<p class="text-xs text-foreground font-medium truncate">
+										{inst.account_name || `@${inst.account_login}`}
+										{#if inst.account_name}
+											<span class="text-muted-foreground font-normal">(@{inst.account_login})</span>
+										{/if}
+										<span class="ml-1 text-muted-foreground font-normal">({inst.account_type})</span>
+									</p>
+									<p class="text-xs text-muted-foreground">
+										Installed {new Date(inst.created_at).toLocaleDateString()}
+									</p>
+								</div>
 							</div>
-							<form
-								method="POST"
-								action="?/removeInstallation"
-								use:enhance={() => {
-									removingInstallation = inst.id;
-									return async ({ update }) => {
-										await update();
-										removingInstallation = null;
-									};
-								}}
+							<a
+								href={inst.account_type === 'Organization'
+									? `https://github.com/organizations/${encodeURIComponent(inst.account_login)}/settings/installations`
+									: 'https://github.com/settings/installations'}
+								target="_blank"
+								rel="noopener noreferrer"
+								class="shrink-0 text-xs text-muted-foreground hover:text-destructive transition-colors ml-4"
 							>
-								<input type="hidden" name="installation_id" value={inst.id} />
-								<button
-									type="submit"
-									disabled={removingInstallation === inst.id}
-									class="shrink-0 text-xs text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50 ml-4"
-								>
-									{removingInstallation === inst.id ? 'Removing…' : 'Remove'}
-								</button>
-							</form>
+								Uninstall on GitHub
+							</a>
 						</div>
 					{/each}
 				</div>
@@ -237,11 +248,10 @@
 							{data.installations.length > 0 ? 'Add another account or organization' : 'Install GitHub App'}
 						</p>
 						<p class="text-xs text-muted-foreground">
-							Opens GitHub in a new tab. Once installed, click <strong>Sync</strong> to import it here.
+							Opens GitHub in a new tab. The list syncs automatically when you load this page; use <strong>Refresh</strong> to update now.
 						</p>
 					</div>
 					<div class="flex shrink-0 items-center gap-2">
-						<!-- Sync button: pulls installations from GitHub API -->
 						<form
 							method="POST"
 							action="?/syncInstallations"
@@ -256,7 +266,7 @@
 							<button
 								type="submit"
 								disabled={syncing}
-								title="Sync installations from GitHub"
+								title="Refresh list from GitHub"
 								class="flex items-center gap-1.5 text-xs border border-border text-foreground hover:bg-muted disabled:opacity-50 rounded-lg px-3 py-2 font-medium transition-colors"
 							>
 								<svg
@@ -269,7 +279,7 @@
 									<path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/>
 									<path d="M21 3v5h-5"/>
 								</svg>
-								{syncing ? 'Syncing…' : 'Sync'}
+								{syncing ? 'Refreshing…' : 'Refresh'}
 							</button>
 						</form>
 

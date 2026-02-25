@@ -1,7 +1,162 @@
 import { redirect, fail } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import { generateAppJWT } from '$lib/server/github-app';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { PageServerLoad, Actions } from './$types';
+
+type GhInstallation = {
+	id: number;
+	account: { login: string; type: string; avatar_url?: string };
+};
+
+/**
+ * Full sync: fetch app installations from GitHub for the user's known accounts,
+ * upsert into DB, and remove DB rows for installations no longer on GitHub.
+ * Called on settings page load and by the Sync action.
+ */
+async function syncInstallationsFromGitHub(
+	supabase: SupabaseClient,
+	userId: string,
+	appId: string,
+	privateKey: string
+): Promise<{ added: number; removed: number; notFound: boolean; error?: string }> {
+	const connectionsResult = await supabase
+		.from('github_connections')
+		.select('github_username, access_token')
+		.eq('user_id', userId);
+
+	const connections = connectionsResult.data ?? [];
+
+	// Start with personal account logins
+	const knownLogins = new Set<string>();
+	for (const c of connections) {
+		if (c.github_username) knownLogins.add(c.github_username.toLowerCase());
+	}
+
+	// Expand with all org memberships via the user's OAuth token so orgs without
+	// tracked repos (e.g. a freshly installed org like timoa-ai) are included
+	await Promise.all(
+		connections.map(async (c) => {
+			if (!c.access_token) return;
+			try {
+				const res = await fetch('https://api.github.com/user/orgs?per_page=100', {
+					headers: {
+						Authorization: `token ${c.access_token}`,
+						Accept: 'application/vnd.github.v3+json',
+						'User-Agent': 'workflow-metrics'
+					}
+				});
+				if (!res.ok) return;
+				const orgs = (await res.json()) as Array<{ login: string }>;
+				for (const org of orgs) {
+					if (org.login) knownLogins.add(org.login.toLowerCase());
+				}
+			} catch {
+				// Non-fatal: continue with what we already know
+			}
+		})
+	);
+
+	if (knownLogins.size === 0) {
+		return { added: 0, removed: 0, notFound: false };
+	}
+
+	let installations: GhInstallation[];
+	let jwt: string;
+	try {
+		jwt = await generateAppJWT(appId, privateKey);
+		const res = await fetch('https://api.github.com/app/installations?per_page=100', {
+			headers: {
+				Authorization: `Bearer ${jwt}`,
+				Accept: 'application/vnd.github.v3+json',
+				'User-Agent': 'workflow-metrics'
+			}
+		});
+		if (!res.ok) {
+			const err = (await res.json().catch(() => ({}))) as { message?: string };
+			return {
+				added: 0,
+				removed: 0,
+				notFound: false,
+				error: `GitHub API error (${res.status}): ${err.message ?? 'unknown'}`
+			};
+		}
+		installations = (await res.json()) as GhInstallation[];
+	} catch (e) {
+		return {
+			added: 0,
+			removed: 0,
+			notFound: false,
+			error: e instanceof Error ? e.message : String(e)
+		};
+	}
+
+	const matching = installations.filter((i) =>
+		knownLogins.has(i.account.login.toLowerCase())
+	);
+
+	const authHeaders = {
+		Authorization: `Bearer ${jwt}`,
+		Accept: 'application/vnd.github.v3+json',
+		'User-Agent': 'workflow-metrics'
+	};
+	const names = await Promise.all(
+		matching.map(async (i) => {
+			const url =
+				i.account.type === 'Organization'
+					? `https://api.github.com/orgs/${encodeURIComponent(i.account.login)}`
+					: `https://api.github.com/users/${encodeURIComponent(i.account.login)}`;
+			try {
+				const r = await fetch(url, { headers: authHeaders });
+				if (!r.ok) return null;
+				const data = (await r.json()) as { name?: string | null };
+				return data.name?.trim() || null;
+			} catch {
+				return null;
+			}
+		})
+	);
+
+	const matchingIds = new Set(matching.map((i) => i.id));
+	const rows = matching.map((inst, idx) => ({
+		user_id: userId,
+		installation_id: inst.id,
+		account_login: inst.account.login,
+		account_type: inst.account.type,
+		account_avatar_url: inst.account.avatar_url ?? null,
+		account_name: names[idx] ?? null,
+		updated_at: new Date().toISOString()
+	}));
+
+	const { error: upsertError } = await supabase
+		.from('github_app_installations')
+		.upsert(rows, { onConflict: 'user_id,installation_id' });
+
+	if (upsertError) {
+		return { added: 0, removed: 0, notFound: false, error: upsertError.message };
+	}
+
+	// Remove from DB any installation that is no longer on GitHub for this user's accounts
+	const { data: existing } = await supabase
+		.from('github_app_installations')
+		.select('installation_id')
+		.eq('user_id', userId);
+
+	const toRemove = (existing ?? []).filter((row) => !matchingIds.has(row.installation_id));
+	if (toRemove.length > 0) {
+		await supabase
+			.from('github_app_installations')
+			.delete()
+			.eq('user_id', userId)
+			.in('installation_id', toRemove.map((r) => r.installation_id));
+	}
+
+	return {
+		added: matching.length,
+		removed: toRemove.length,
+		notFound: matching.length === 0
+	};
+}
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	const { user } = await locals.safeGetSession();
@@ -9,7 +164,14 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 	const appSuccess = url.searchParams.get('appSuccess') === '1';
 	const appError = url.searchParams.get('appError') ?? null;
-	const hasGitHubApp = !!(env.GITHUB_APP_ID && env.GITHUB_APP_PRIVATE_KEY && env.GITHUB_APP_SLUG);
+	const appId = env.GITHUB_APP_ID;
+	const privateKey = env.GITHUB_APP_PRIVATE_KEY;
+	const hasGitHubApp = !!(appId && privateKey && env.GITHUB_APP_SLUG);
+
+	// Auto-sync installations from GitHub on every load so the list reflects add/remove on GitHub
+	if (hasGitHubApp && appId && privateKey) {
+		await syncInstallationsFromGitHub(locals.supabase, user.id, appId, privateKey);
+	}
 
 	const [connectionsResult, settingsResult, reposResult, installationsResult] = await Promise.all([
 		locals.supabase
@@ -28,7 +190,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			.order('full_name'),
 		locals.supabase
 			.from('github_app_installations')
-			.select('id, installation_id, account_login, account_type, created_at')
+			.select('id, installation_id, account_login, account_type, account_avatar_url, account_name, created_at')
 			.eq('user_id', user.id)
 			.order('account_login')
 	]);
@@ -71,13 +233,8 @@ export const actions: Actions = {
 	},
 
 	/**
-	 * Sync GitHub App installations from the GitHub API.
-	 *
-	 * The GitHub App installation callback only fires when the "Setup URL" is
-	 * properly configured in the GitHub App settings. This action provides a
-	 * reliable fallback: it fetches all app installations via the App JWT and
-	 * matches them against the user's known GitHub accounts (personal + org owners
-	 * from their tracked repositories).
+	 * Manual refresh: sync GitHub App installations from the GitHub API and
+	 * update the DB (add new, remove uninstalled). The list also syncs automatically on page load.
 	 */
 	syncInstallations: async ({ locals }) => {
 		const { user } = await locals.safeGetSession();
@@ -89,97 +246,22 @@ export const actions: Actions = {
 			return fail(500, { syncError: 'GitHub App is not configured on this server.' });
 		}
 
-		// Build the set of GitHub account logins that belong to this user:
-		// their personal account(s) + any org owners from their tracked repos.
-		const [connectionsResult, reposResult] = await Promise.all([
-			locals.supabase
-				.from('github_connections')
-				.select('github_username')
-				.eq('user_id', user.id),
-			locals.supabase
-				.from('repositories')
-				.select('owner')
-				.eq('user_id', user.id)
-				.eq('is_active', true)
-		]);
-
-		const knownLogins = new Set<string>();
-		for (const c of connectionsResult.data ?? []) {
-			if (c.github_username) knownLogins.add(c.github_username.toLowerCase());
-		}
-		for (const r of reposResult.data ?? []) {
-			if (r.owner) knownLogins.add(r.owner.toLowerCase());
-		}
-
-		if (knownLogins.size === 0) {
-			return { syncResult: { added: 0, notFound: false } };
-		}
-
-		// Fetch all installations of this GitHub App via the App JWT.
-		let installations: Array<{ id: number; account: { login: string; type: string } }>;
-		try {
-			const jwt = await generateAppJWT(appId, privateKey);
-			const res = await fetch('https://api.github.com/app/installations?per_page=100', {
-				headers: {
-					Authorization: `Bearer ${jwt}`,
-					Accept: 'application/vnd.github.v3+json',
-					'User-Agent': 'workflow-metrics'
-				}
-			});
-			if (!res.ok) {
-				const err = (await res.json().catch(() => ({}))) as { message?: string };
-				return fail(500, {
-					syncError: `GitHub API error (${res.status}): ${err.message ?? 'unknown'}`
-				});
-			}
-			installations = (await res.json()) as typeof installations;
-		} catch (e) {
-			return fail(500, { syncError: e instanceof Error ? e.message : String(e) });
-		}
-
-		// Keep only installations whose account login matches a known login.
-		const matching = installations.filter((i) =>
-			knownLogins.has(i.account.login.toLowerCase())
+		const result = await syncInstallationsFromGitHub(
+			locals.supabase,
+			user.id,
+			appId,
+			privateKey
 		);
 
-		if (matching.length === 0) {
-			return { syncResult: { added: 0, notFound: true } };
-		}
+		if (result.error) return fail(500, { syncError: result.error });
 
-		const { error: dbError } = await locals.supabase
-			.from('github_app_installations')
-			.upsert(
-				matching.map((i) => ({
-					user_id: user.id,
-					installation_id: i.id,
-					account_login: i.account.login,
-					account_type: i.account.type,
-					updated_at: new Date().toISOString()
-				})),
-				{ onConflict: 'user_id,installation_id' }
-			);
-
-		if (dbError) return fail(500, { syncError: dbError.message });
-
-		return { syncResult: { added: matching.length, notFound: false } };
-	},
-
-	removeInstallation: async ({ request, locals }) => {
-		const { user } = await locals.safeGetSession();
-		if (!user) return fail(401, { error: 'Unauthorized' });
-
-		const formData = await request.formData();
-		const installationRowId = formData.get('installation_id') as string;
-
-		const { error } = await locals.supabase
-			.from('github_app_installations')
-			.delete()
-			.eq('id', installationRowId)
-			.eq('user_id', user.id);
-
-		if (error) return fail(500, { error: error.message });
-
-		return { success: true };
+		return {
+			syncResult: {
+				added: result.added,
+				removed: result.removed,
+				notFound: result.notFound
+			}
+		};
 	},
 
 	removeRepo: async ({ request, locals }) => {
