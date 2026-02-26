@@ -36,9 +36,13 @@
 
 					<!-- Success rate -->
 					<div class="text-right flex-shrink-0">
-						<p class="text-sm font-semibold {successRateColor(m.successRate)}">
-							{m.successRate.toFixed(0)}%
-						</p>
+						{#if m.totalRuns === 0}
+							<p class="text-sm font-semibold text-muted-foreground">N/A</p>
+						{:else}
+							<p class="text-sm font-semibold {successRateColor(m.successRate)}">
+								{m.successRate.toFixed(0)}%
+							</p>
+						{/if}
 						<p class="text-xs text-muted-foreground">success</p>
 					</div>
 

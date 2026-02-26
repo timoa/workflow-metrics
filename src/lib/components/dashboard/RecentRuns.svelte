@@ -2,12 +2,53 @@
 	import type { RecentRun } from '$lib/types/metrics';
 	import { formatDuration, formatRelativeTime, statusLabel, conclusionColor } from '$lib/utils';
 
+	const PAGE_SIZE_OPTIONS = [20, 50, 100] as const;
+
 	let { runs, owner, repo }: { runs: RecentRun[]; owner: string; repo: string } = $props();
+
+	let pageSize = $state(20);
+	let page = $state(1);
+
+	const totalPages = $derived(Math.max(1, Math.ceil(runs.length / pageSize)));
+	const clampedPage = $derived(Math.min(page, totalPages));
+	const paginatedRuns = $derived(
+		runs.slice((clampedPage - 1) * pageSize, clampedPage * pageSize)
+	);
+	const startItem = $derived(runs.length === 0 ? 0 : (clampedPage - 1) * pageSize + 1);
+	const endItem = $derived(Math.min(clampedPage * pageSize, runs.length));
+
+	$effect(() => {
+		if (page > totalPages) page = totalPages;
+	});
+
+	function setPageSize(size: number) {
+		pageSize = size;
+		page = 1;
+	}
 </script>
 
 <div class="bg-card border border-border rounded-xl overflow-hidden">
-	<div class="p-5 border-b border-border">
+	<div class="p-5 border-b border-border flex flex-wrap items-center justify-between gap-3">
 		<h3 class="text-sm font-semibold text-foreground">Recent Runs</h3>
+		{#if runs.length > 0}
+			<div class="flex flex-wrap items-center gap-3">
+				<span class="text-xs text-muted-foreground">Show</span>
+				<div class="flex rounded-md border border-border bg-muted/30 p-0.5" role="group" aria-label="Items per page">
+					{#each PAGE_SIZE_OPTIONS as size}
+						<button
+							type="button"
+							class="px-2.5 py-1 text-xs font-medium rounded transition-colors {pageSize === size
+								? 'bg-background text-foreground shadow-sm'
+								: 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}"
+							onclick={() => setPageSize(size)}
+						>
+							{size}
+						</button>
+					{/each}
+				</div>
+				<span class="text-xs text-muted-foreground">per page</span>
+			</div>
+		{/if}
 	</div>
 
 	{#if runs.length === 0}
@@ -28,7 +69,7 @@
 					</tr>
 				</thead>
 				<tbody>
-					{#each runs as run}
+					{#each paginatedRuns as run}
 						<tr class="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
 							<td class="px-5 py-3">
 								<div class="flex items-center gap-2">
@@ -98,5 +139,37 @@
 				</tbody>
 			</table>
 		</div>
+
+		<!-- Pagination -->
+		{#if runs.length > pageSize}
+			<div class="px-5 py-3 border-t border-border flex flex-wrap items-center justify-between gap-3">
+				<p class="text-xs text-muted-foreground">
+					Showing {startItem}–{endItem} of {runs.length}
+				</p>
+				<div class="flex items-center gap-2">
+					<button
+						type="button"
+						class="px-2.5 py-1.5 text-xs font-medium rounded-md border border-border bg-background text-foreground hover:bg-muted/50 disabled:opacity-50 disabled:pointer-events-none transition-colors"
+						disabled={clampedPage <= 1}
+						onclick={() => (page = clampedPage - 1)}
+						aria-label="Previous page"
+					>
+						Previous
+					</button>
+					<span class="text-xs text-muted-foreground px-2">
+						Page {clampedPage} of {totalPages}
+					</span>
+					<button
+						type="button"
+						class="px-2.5 py-1.5 text-xs font-medium rounded-md border border-border bg-background text-foreground hover:bg-muted/50 disabled:opacity-50 disabled:pointer-events-none transition-colors"
+						disabled={clampedPage >= totalPages}
+						onclick={() => (page = clampedPage + 1)}
+						aria-label="Next page"
+					>
+						Next
+					</button>
+				</div>
+			</div>
+		{/if}
 	{/if}
 </div>

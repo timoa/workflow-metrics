@@ -88,11 +88,13 @@
 	<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
 		<MetricCard
 			title="Success Rate"
-			value="{metrics.successRate.toFixed(1)}%"
-			subtitle="{metrics.successCount + metrics.failureCount > 0
+			value={metrics.totalRuns === 0 ? 'N/A' : `${metrics.successRate.toFixed(1)}%`}
+			subtitle={metrics.successCount + metrics.failureCount > 0
 				? `${metrics.successCount} of ${metrics.successCount + metrics.failureCount} runs that executed`
-				: `${metrics.successCount} of ${metrics.totalRuns} runs`}"
-			valueClass={successRateColor(metrics.successRate)}
+				: metrics.totalRuns === 0
+					? 'no runs in last 30 days'
+					: `${metrics.successCount} of ${metrics.totalRuns} runs`}
+			valueClass={metrics.totalRuns === 0 ? 'text-muted-foreground' : successRateColor(metrics.successRate)}
 			help="Percentage of runs that actually executed (success or failure). Skipped and cancelled runs are excluded."
 		/>
 		<MetricCard

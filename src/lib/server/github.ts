@@ -944,7 +944,7 @@ export async function buildWorkflowDetailData(
 		durationTrend,
 		runHistory: buildRunTrend(runs),
 		jobBreakdown,
-		recentRuns: runsToRecentRuns(runs, workflows).slice(0, 20),
+		recentRuns: runsToRecentRuns(runs, workflows).slice(0, 100),
 		...minutesMetrics
 	};
 }

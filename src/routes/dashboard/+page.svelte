@@ -378,7 +378,7 @@
 		{/if}
 	{:else}
 		<!-- Metric cards -->
-		<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
+		<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
 			<MetricCard
 				title="Total Runs"
 				value={totalRunsLabel}
@@ -400,13 +400,6 @@
 				subtitle="per run"
 				help="Average time from when a run started until it completed, across all completed runs in the last {dashboardData.timeWindowDays} days."
 				icon='<svg class="size-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
-			/>
-			<MetricCard
-				title="Active Workflows"
-				value={dashboardData.activeWorkflows.toString()}
-				subtitle="total workflows"
-				help="Number of workflow files in this repo that are currently active (not disabled). Each .yml workflow in .github/workflows counts as one."
-				icon='<svg class="size-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>'
 			/>
 			<MetricCard
 				title="Build Minutes"
