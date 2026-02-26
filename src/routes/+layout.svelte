@@ -1,10 +1,16 @@
 <script lang="ts">
 	import '../app.css';
 	import { page, navigating } from '$app/state';
+	import { afterNavigate } from '$app/navigation';
 	import Sidebar from '$lib/components/layout/Sidebar.svelte';
 	import Navbar from '$lib/components/layout/Navbar.svelte';
 
 	let { children, data } = $props();
+	let mainEl: HTMLElement | null = $state(null);
+
+	afterNavigate(() => {
+		mainEl?.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+	});
 
 	// Pages that should not show the app shell
 	const isAuthPage = $derived(
@@ -36,7 +42,7 @@
 				</div>
 			{/if}
 			<Navbar />
-			<main class="flex-1 overflow-y-auto p-6">
+			<main bind:this={mainEl} class="flex-1 overflow-y-auto p-6">
 				{@render children()}
 			</main>
 		</div>
