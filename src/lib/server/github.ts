@@ -1,4 +1,5 @@
 import { Octokit } from '@octokit/rest';
+import { parse as parseYaml } from 'yaml';
 import {
 	computeDurationMs,
 	percentile
@@ -17,7 +18,12 @@ import type {
 	DurationDataPoint,
 	RecentRun,
 	JobBreakdown,
-	WorkflowFileCommit
+	WorkflowFileCommit,
+	MinutesDataPoint,
+	WorkflowMinutesShare,
+	JobMinutesShare,
+	StepBreakdown,
+	RunnerType
 } from '$lib/types/metrics';
 
 export function createOctokit(accessToken: string): Octokit {
@@ -217,6 +223,18 @@ function computeWorkflowMetrics(
 	const successCount = completed.filter((r) => r.conclusion === 'success').length;
 	const failureCount = completed.filter((r) => r.conclusion === 'failure').length;
 	const cancelledCount = completed.filter((r) => r.conclusion === 'cancelled').length;
+	const skippedCount = completed.filter((r) => r.conclusion === 'skipped').length;
+
+	// Success/failure rates only among runs that actually executed (exclude skipped/cancelled)
+	const executedCount = successCount + failureCount;
+	const successRate =
+		executedCount > 0 ? Math.round((successCount / executedCount) * 1000) / 10 : 0;
+	const failureRate =
+		executedCount > 0 ? Math.round((failureCount / executedCount) * 1000) / 10 : 0;
+	const skipRate =
+		workflowRuns.length > 0
+			? Math.round((skippedCount / workflowRuns.length) * 1000) / 10
+			: 0;
 
 	const durations = completed
 		.map((r) => computeDurationMs(r.run_started_at, r.updated_at))
@@ -237,7 +255,10 @@ function computeWorkflowMetrics(
 		successCount,
 		failureCount,
 		cancelledCount,
-		successRate: completed.length > 0 ? (successCount / completed.length) * 100 : 0,
+		skippedCount,
+		successRate,
+		failureRate,
+		skipRate,
 		avgDurationMs: Math.round(avgDurationMs),
 		p50DurationMs: Math.round(percentile(sortedAsc, 50)),
 		p95DurationMs: Math.round(percentile(sortedAsc, 95)),
@@ -253,7 +274,7 @@ function buildRunTrend(runs: GitHubWorkflowRun[], days = 30): RunDataPoint[] {
 		const d = new Date();
 		d.setDate(d.getDate() - i);
 		const key = d.toISOString().slice(0, 10);
-		map.set(key, { date: key, success: 0, failure: 0, cancelled: 0, total: 0 });
+		map.set(key, { date: key, success: 0, failure: 0, cancelled: 0, skipped: 0, total: 0 });
 	}
 
 	for (const run of runs) {
@@ -264,6 +285,7 @@ function buildRunTrend(runs: GitHubWorkflowRun[], days = 30): RunDataPoint[] {
 		if (run.conclusion === 'success') point.success++;
 		else if (run.conclusion === 'failure') point.failure++;
 		else if (run.conclusion === 'cancelled') point.cancelled++;
+		else if (run.conclusion === 'skipped') point.skipped++;
 	}
 
 	return Array.from(map.values());
@@ -351,6 +373,354 @@ function runsToRecentRuns(runs: GitHubWorkflowRun[], workflows: GitHubWorkflow[]
 	}));
 }
 
+/**
+ * GitHub Actions billing multiplier by runner OS.
+ * Linux (ubuntu-*): ×1 · Windows (windows-*): ×2 · macOS (macos-*): ×10
+ */
+function getRunnerMultiplier(labels: string[]): number {
+	const s = labels.join(' ').toLowerCase();
+	if (s.includes('macos') || s.includes('mac-') || s.includes('osx')) return 10;
+	if (s.includes('windows')) return 2;
+	return 1;
+}
+
+/** Fetches a workflow YAML file from the repo and returns its raw string content. */
+async function fetchWorkflowContent(
+	octokit: Octokit,
+	owner: string,
+	repo: string,
+	path: string
+): Promise<string | null> {
+	try {
+		const { data } = await octokit.rest.repos.getContent({ owner, repo, path });
+		if (!('content' in data) || data.type !== 'file') return null;
+		// GitHub returns base64 with embedded newlines — strip them before decoding
+		const b64 = (data.content as string).replace(/\n/g, '');
+		return atob(b64);
+	} catch {
+		return null;
+	}
+}
+
+interface WorkflowRunnerInfo {
+	multiplier: number;
+	runnerType: RunnerType;
+	detected: boolean;
+}
+
+/**
+ * Parses a GitHub Actions workflow YAML string and returns the runner info.
+ * Handles: plain strings, label arrays, and gracefully skips template expressions (${{ }}).
+ * Mixed runner types (e.g., ubuntu + macos) are averaged and labelled "mixed".
+ */
+function parseWorkflowRunners(content: string): WorkflowRunnerInfo {
+	try {
+		const doc = parseYaml(content) as Record<string, unknown> | null;
+		if (!doc || typeof doc !== 'object') return { multiplier: 1, runnerType: 'unknown', detected: false };
+
+		const jobs = doc.jobs as Record<string, unknown> | undefined;
+		if (!jobs || typeof jobs !== 'object') return { multiplier: 1, runnerType: 'unknown', detected: false };
+
+		const multipliers: number[] = [];
+
+		for (const job of Object.values(jobs)) {
+			if (!job || typeof job !== 'object') continue;
+			const jobObj = job as Record<string, unknown>;
+
+			// Reusable workflow calls (`uses:`) have no runner — skip them
+			if ('uses' in jobObj) continue;
+
+			const runsOn = jobObj['runs-on'];
+
+			let labels: string[] = [];
+
+			if (runsOn === undefined || runsOn === null) {
+				// No runs-on specified → GitHub defaults to ubuntu-latest
+				labels = ['ubuntu-latest'];
+			} else if (typeof runsOn === 'string') {
+				// Skip template expressions — we can't resolve them statically
+				if (runsOn.includes('${{')) continue;
+				labels = [runsOn];
+			} else if (Array.isArray(runsOn)) {
+				// Filter out template expressions within arrays
+				labels = runsOn.filter((l): l is string => typeof l === 'string' && !l.includes('${{'));
+				if (labels.length === 0) continue;
+			} else {
+				continue;
+			}
+
+			multipliers.push(getRunnerMultiplier(labels));
+		}
+
+		if (multipliers.length === 0) return { multiplier: 1, runnerType: 'unknown', detected: false };
+
+		const avg = multipliers.reduce((a, b) => a + b, 0) / multipliers.length;
+		const unique = [...new Set(multipliers)];
+
+		let runnerType: RunnerType;
+		if (unique.length > 1) {
+			runnerType = 'mixed';
+		} else if (avg >= 10) {
+			runnerType = 'macos';
+		} else if (avg >= 2) {
+			runnerType = 'windows';
+		} else {
+			runnerType = 'ubuntu';
+		}
+
+		return { multiplier: avg, runnerType, detected: true };
+	} catch {
+		return { multiplier: 1, runnerType: 'unknown', detected: false };
+	}
+}
+
+/**
+ * Fetches and parses the runner info for every workflow in the list in parallel.
+ * Returns a Map keyed by workflow id.
+ */
+async function fetchWorkflowRunnerInfo(
+	octokit: Octokit,
+	owner: string,
+	repo: string,
+	workflows: GitHubWorkflow[]
+): Promise<Map<number, WorkflowRunnerInfo>> {
+	const results = await Promise.all(
+		workflows.map(async (w) => {
+			const content = await fetchWorkflowContent(octokit, owner, repo, w.path);
+			const info = content ? parseWorkflowRunners(content) : { multiplier: 1, runnerType: 'unknown' as RunnerType, detected: false };
+			return [w.id, info] as const;
+		})
+	);
+	return new Map(results);
+}
+
+/** Returns the raw duration of a run in whole minutes (ceiling), minimum 0. */
+function runDurationMinutes(run: GitHubWorkflowRun): number {
+	const start = run.run_started_at ?? run.created_at;
+	const durationMs = new Date(run.updated_at).getTime() - new Date(start).getTime();
+	return Math.max(0, Math.ceil(durationMs / 60_000));
+}
+
+interface MinutesOverviewMetrics {
+	totalMinutes30d: number;
+	billableMinutes30d: number;
+	billableIsEstimate: boolean;
+	minutesByWorkflow: WorkflowMinutesShare[];
+	minutesTrend: MinutesDataPoint[];
+	wastedMinutes: number;
+	topBranchByMinutes: { branch: string; minutes: number } | null;
+}
+
+function computeMinutesOverview(
+	runs: GitHubWorkflowRun[],
+	workflows: GitHubWorkflow[],
+	days: number,
+	runnerInfoMap: Map<number, WorkflowRunnerInfo> = new Map()
+): MinutesOverviewMetrics {
+	const completedRuns = runs.filter((r) => r.status === 'completed');
+
+	// Per-workflow minutes
+	const workflowMinutesMap = new Map<number, number>();
+	const workflowNameMap = new Map<number, string>(workflows.map((w) => [w.id, w.name]));
+	let totalMinutes30d = 0;
+	let wastedMinutes = 0;
+
+	// Daily trend map (pre-fill all days in the window)
+	const trendMap = new Map<string, number>();
+	for (let i = days - 1; i >= 0; i--) {
+		const d = new Date();
+		d.setDate(d.getDate() - i);
+		trendMap.set(d.toISOString().slice(0, 10), 0);
+	}
+
+	// Branch minutes map
+	const branchMinutesMap = new Map<string, number>();
+
+	for (const run of completedRuns) {
+		const minutes = runDurationMinutes(run);
+		totalMinutes30d += minutes;
+
+		// Per-workflow
+		const prev = workflowMinutesMap.get(run.workflow_id) ?? 0;
+		workflowMinutesMap.set(run.workflow_id, prev + minutes);
+
+		// Wasted minutes (failures + cancelled)
+		if (run.conclusion === 'failure' || run.conclusion === 'cancelled') {
+			wastedMinutes += minutes;
+		}
+
+		// Daily trend (keyed by run start date)
+		const dateKey = (run.run_started_at ?? run.updated_at).slice(0, 10);
+		if (trendMap.has(dateKey)) {
+			trendMap.set(dateKey, (trendMap.get(dateKey) ?? 0) + minutes);
+		}
+
+		// Branch
+		const branch = run.head_branch;
+		if (branch) {
+			branchMinutesMap.set(branch, (branchMinutesMap.get(branch) ?? 0) + minutes);
+		}
+	}
+
+	// Build minutesByWorkflow (sorted descending by minutes)
+	// Use runner info parsed from workflow YAML files when available
+	const minutesByWorkflow: WorkflowMinutesShare[] = Array.from(workflowMinutesMap.entries())
+		.map(([workflowId, minutes]) => {
+			const runnerInfo = runnerInfoMap.get(workflowId);
+			const multiplier = runnerInfo?.multiplier ?? 1;
+			const runnerDetected = runnerInfo?.detected ?? false;
+			return {
+				workflowName: workflowNameMap.get(workflowId) ?? `Workflow ${workflowId}`,
+				minutes,
+				billableMinutes: Math.ceil(minutes * multiplier),
+				percentage: totalMinutes30d > 0 ? Math.round((minutes / totalMinutes30d) * 100) : 0,
+				runnerType: (runnerInfo?.runnerType ?? 'unknown') as RunnerType,
+				runnerDetected
+			};
+		})
+		.filter((w) => w.minutes > 0)
+		.sort((a, b) => b.minutes - a.minutes);
+
+	// Build minutesTrend
+	const minutesTrend: MinutesDataPoint[] = Array.from(trendMap.entries()).map(
+		([date, minutes]) => ({ date, minutes })
+	);
+
+	// Top branch
+	let topBranchByMinutes: { branch: string; minutes: number } | null = null;
+	if (branchMinutesMap.size > 0) {
+		const [branch, minutes] = [...branchMinutesMap.entries()].sort((a, b) => b[1] - a[1])[0];
+		topBranchByMinutes = { branch, minutes };
+	}
+
+	const billableMinutes30d = minutesByWorkflow.reduce((sum, w) => sum + w.billableMinutes, 0);
+	const billableIsEstimate = minutesByWorkflow.some((w) => !w.runnerDetected);
+
+	return {
+		totalMinutes30d,
+		billableMinutes30d,
+		billableIsEstimate,
+		minutesByWorkflow,
+		minutesTrend,
+		wastedMinutes,
+		topBranchByMinutes
+	};
+}
+
+interface MinutesDetailMetrics {
+	totalMinutes30d: number;
+	billableMinutes30d: number;
+	minutesByJob: JobMinutesShare[];
+	minutesTrend: MinutesDataPoint[];
+	wastedMinutes: number;
+	stepBreakdown: StepBreakdown[];
+	slowestJobName: string | null;
+}
+
+function computeMinutesDetail(
+	runs: GitHubWorkflowRun[],
+	jobsPerRun: GitHubJob[][],
+	jobBreakdown: JobBreakdown[]
+): MinutesDetailMetrics {
+	const completedRuns = runs.filter((r) => r.status === 'completed');
+
+	// Total minutes and waste from all runs in window (run-level)
+	let totalMinutes30d = 0;
+	let wastedMinutes = 0;
+	const trendMap = new Map<string, number>();
+	for (let i = 29; i >= 0; i--) {
+		const d = new Date();
+		d.setDate(d.getDate() - i);
+		trendMap.set(d.toISOString().slice(0, 10), 0);
+	}
+
+	for (const run of completedRuns) {
+		const minutes = runDurationMinutes(run);
+		totalMinutes30d += minutes;
+		if (run.conclusion === 'failure' || run.conclusion === 'cancelled') {
+			wastedMinutes += minutes;
+		}
+		const dateKey = (run.run_started_at ?? run.updated_at).slice(0, 10);
+		if (trendMap.has(dateKey)) {
+			trendMap.set(dateKey, (trendMap.get(dateKey) ?? 0) + minutes);
+		}
+	}
+
+	const minutesTrend: MinutesDataPoint[] = Array.from(trendMap.entries()).map(
+		([date, minutes]) => ({ date, minutes })
+	);
+
+	// Per-job minutes from sampled runs — track raw and billable separately
+	const jobMinutesMap = new Map<string, number>();
+	const jobBillableMap = new Map<string, number>();
+	let totalRawFromJobs = 0;
+	let totalBillableFromJobs = 0;
+
+	for (const jobs of jobsPerRun) {
+		for (const job of jobs) {
+			const dur = computeDurationMs(job.started_at, job.completed_at);
+			if (dur !== null) {
+				const rawMins = Math.max(0, Math.ceil(dur / 60_000));
+				const billableMins = rawMins * getRunnerMultiplier(job.labels);
+				jobMinutesMap.set(job.name, (jobMinutesMap.get(job.name) ?? 0) + rawMins);
+				jobBillableMap.set(job.name, (jobBillableMap.get(job.name) ?? 0) + billableMins);
+				totalRawFromJobs += rawMins;
+				totalBillableFromJobs += billableMins;
+			}
+		}
+	}
+	const totalJobMinutes = Array.from(jobMinutesMap.values()).reduce((a, b) => a + b, 0);
+	const minutesByJob: JobMinutesShare[] = Array.from(jobMinutesMap.entries())
+		.map(([jobName, minutes]) => ({
+			jobName,
+			minutes,
+			billableMinutes: jobBillableMap.get(jobName) ?? minutes,
+			percentage: totalJobMinutes > 0 ? Math.round((minutes / totalJobMinutes) * 100) : 0
+		}))
+		.filter((j) => j.minutes > 0)
+		.sort((a, b) => b.minutes - a.minutes);
+
+	// Estimate billable for all 30 days using the avg multiplier from sampled jobs
+	const avgMultiplier = totalRawFromJobs > 0 ? totalBillableFromJobs / totalRawFromJobs : 1;
+	const billableMinutes30d = Math.round(totalMinutes30d * avgMultiplier);
+
+	// Step breakdown for the slowest job
+	const slowestJob = [...jobBreakdown].sort((a, b) => b.avgDurationMs - a.avgDurationMs)[0];
+	const slowestJobName = slowestJob?.jobName ?? null;
+	const stepDurations = new Map<string, number[]>();
+	if (slowestJob) {
+		for (const jobs of jobsPerRun) {
+			const match = jobs.find((j) => j.name === slowestJob.jobName);
+			if (match) {
+				for (const step of match.steps) {
+					const dur = computeDurationMs(step.started_at, step.completed_at);
+					if (dur !== null && dur > 0) {
+						if (!stepDurations.has(step.name)) stepDurations.set(step.name, []);
+						stepDurations.get(step.name)!.push(dur);
+					}
+				}
+			}
+		}
+	}
+	const stepBreakdown: StepBreakdown[] = Array.from(stepDurations.entries())
+		.map(([stepName, durs]) => ({
+			stepName,
+			avgDurationMs: Math.round(durs.reduce((a, b) => a + b, 0) / durs.length),
+			samples: durs.length
+		}))
+		.sort((a, b) => b.avgDurationMs - a.avgDurationMs);
+
+	return {
+		totalMinutes30d,
+		billableMinutes30d,
+		minutesByJob,
+		minutesTrend,
+		wastedMinutes,
+		stepBreakdown,
+		slowestJobName
+	};
+}
+
 export interface BuildDashboardDataOptions {
 	onTiming?: TimingCollector;
 	/** When set, skip fetching runs from GitHub and use this array instead (e.g. from cache). */
@@ -436,8 +806,29 @@ export async function buildDashboardData(
 	const dora = computeDoraMetrics(runs);
 	timing('compute: computeDoraMetrics', now() - doraStart, { runs: runs.length });
 
+	const runnerInfoStart = now();
+	const runnerInfoMap = await fetchWorkflowRunnerInfo(octokit, owner, repo, workflows);
+	timing('GitHub: fetchWorkflowRunnerInfo', now() - runnerInfoStart, {
+		workflows: runnerInfoMap.size
+	});
+
+	const minutesStart = now();
+	const minutesMetrics = computeMinutesOverview(runs, workflows, days, runnerInfoMap);
+	timing('compute: computeMinutesOverview', now() - minutesStart, { runs: runs.length });
+
 	const completedRuns = runs.filter((r) => r.status === 'completed');
 	const successRuns = completedRuns.filter((r) => r.conclusion === 'success');
+	const failureRuns = completedRuns.filter((r) => r.conclusion === 'failure');
+	const skippedRuns = completedRuns.filter((r) => r.conclusion === 'skipped');
+	const executedRuns = successRuns.length + failureRuns.length;
+	const successRate =
+		executedRuns > 0 ? Math.round((successRuns.length / executedRuns) * 1000) / 10 : 0;
+	const totalSkipped = skippedRuns.length;
+	const skipRate =
+		completedRuns.length > 0
+			? Math.round((totalSkipped / completedRuns.length) * 1000) / 10
+			: 0;
+
 	const durations = completedRuns
 		.map((r) => computeDurationMs(r.run_started_at, r.updated_at))
 		.filter((d): d is number => d !== null);
@@ -448,7 +839,10 @@ export async function buildDashboardData(
 		owner,
 		repo,
 		totalRuns: runs.length,
-		successRate: completedRuns.length > 0 ? (successRuns.length / completedRuns.length) * 100 : 0,
+		totalRunsIsCapped: runs.length >= 1000,
+		successRate,
+		totalSkipped,
+		skipRate,
 		avgDurationMs: Math.round(avgDurationMs),
 		activeWorkflows: workflows.filter((w) => w.state === 'active').length,
 		runTrend,
@@ -456,7 +850,8 @@ export async function buildDashboardData(
 		recentRuns,
 		workflowFileCommits,
 		dora,
-		timeWindowDays: days
+		timeWindowDays: days,
+		...minutesMetrics
 	};
 }
 
@@ -539,6 +934,8 @@ export async function buildWorkflowDetailData(
 
 	const metrics = computeWorkflowMetrics(workflow, runs);
 
+	const minutesMetrics = computeMinutesDetail(runs, jobsPerRun, jobBreakdown);
+
 	return {
 		workflowId,
 		workflowName: workflow.name,
@@ -547,6 +944,7 @@ export async function buildWorkflowDetailData(
 		durationTrend,
 		runHistory: buildRunTrend(runs),
 		jobBreakdown,
-		recentRuns: runsToRecentRuns(runs, workflows).slice(0, 20)
+		recentRuns: runsToRecentRuns(runs, workflows).slice(0, 20),
+		...minutesMetrics
 	};
 }

@@ -5,9 +5,18 @@
 	import MetricCard from '$lib/components/dashboard/MetricCard.svelte';
 	import RunHistoryChart from '$lib/components/dashboard/RunHistoryChart.svelte';
 	import DurationChart from '$lib/components/dashboard/DurationChart.svelte';
+	import MinutesDonutChart from '$lib/components/dashboard/MinutesDonutChart.svelte';
+	import MinutesTrendChart from '$lib/components/dashboard/MinutesTrendChart.svelte';
 	import RecentRuns from '$lib/components/dashboard/RecentRuns.svelte';
 	import WorkflowList from '$lib/components/dashboard/WorkflowList.svelte';
 	import { formatDuration, successRateColor, failureRateColor } from '$lib/utils';
+
+	function formatMinutes(m: number): string {
+		if (m < 60) return `${m}m`;
+		const h = Math.floor(m / 60);
+		const min = m % 60;
+		return min > 0 ? `${h}h ${min}m` : `${h}h`;
+	}
 
 	let { data }: { data: PageData } = $props();
 
@@ -219,8 +228,14 @@
 
 	const timeWindowLabel = $derived(
 		backgroundLoading
-			? 'Last 7 days · loading 30-day data…'
+			? 'Last 7 days'
 			: `Last ${dashboardData?.timeWindowDays ?? 30} days`
+	);
+
+	const totalRunsLabel = $derived(
+		dashboardData
+			? `${dashboardData.totalRuns.toLocaleString()}${dashboardData.totalRunsIsCapped ? '+' : ''}`
+			: ''
 	);
 </script>
 
@@ -235,6 +250,15 @@
 			<h1 class="text-xl font-semibold text-foreground">{data.selectedRepo.full_name}</h1>
 			<div class="flex items-center gap-2">
 				<p class="text-sm text-muted-foreground">GitHub Actions · {timeWindowLabel}</p>
+				{#if backgroundLoading}
+					<span class="inline-flex items-center gap-1 text-xs text-muted-foreground">
+						<svg class="size-3 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+							<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+							<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+						</svg>
+						Loading 30-day…
+					</span>
+				{/if}
 				{#if isStale && !backgroundLoading}
 					<span
 						class="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
@@ -277,14 +301,18 @@
 		</div>
 	{:else if initialLoading || !dashboardData}
 		<!-- Loading skeleton -->
-		<div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-			{#each [1, 2, 3, 4] as _}
+		<div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
+			{#each [1, 2, 3, 4, 5] as _}
 				<div class="h-24 rounded-lg bg-muted/60 animate-pulse"></div>
 			{/each}
 		</div>
 		<div class="grid grid-cols-1 lg:grid-cols-5 gap-4">
 			<div class="lg:col-span-3 h-64 rounded-lg bg-muted/60 animate-pulse"></div>
 			<div class="lg:col-span-2 h-64 rounded-lg bg-muted/60 animate-pulse"></div>
+		</div>
+		<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+			<div class="h-48 rounded-lg bg-muted/60 animate-pulse"></div>
+			<div class="h-48 rounded-lg bg-muted/60 animate-pulse"></div>
 		</div>
 
 		<!-- Progress indicator (shown after 300ms delay to avoid flash on fast loads) -->
@@ -350,20 +378,20 @@
 		{/if}
 	{:else}
 		<!-- Metric cards -->
-		<div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+		<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
 			<MetricCard
 				title="Total Runs"
-				value={dashboardData.totalRuns.toLocaleString()}
+				value={totalRunsLabel}
 				subtitle="last {dashboardData.timeWindowDays} days"
-				help="Total number of workflow runs that were triggered in the last {dashboardData.timeWindowDays} days, including success, failure, and cancelled."
+				help="Total number of workflow runs that were triggered in the last {dashboardData.timeWindowDays} days, including success, failure, and cancelled.{dashboardData.totalRunsIsCapped ? ' GitHub caps filtered results at 1,000 runs, so the real total may be higher.' : ''}"
 				icon='<svg class="size-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>'
 			/>
 			<MetricCard
 				title="Success Rate"
 				value="{dashboardData.successRate.toFixed(1)}%"
-				subtitle="of completed runs"
+				subtitle="of runs that executed"
 				valueClass={successRateColor(dashboardData.successRate)}
-				help="Percentage of completed runs that finished successfully. Cancelled and in-progress runs are not counted."
+				help="Percentage of runs that actually executed (success or failure). Skipped and cancelled runs are excluded so the rate reflects real failures, not condition-not-met skips."
 				icon='<svg class="size-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 5 5L20 7"/></svg>'
 			/>
 			<MetricCard
@@ -379,6 +407,27 @@
 				subtitle="total workflows"
 				help="Number of workflow files in this repo that are currently active (not disabled). Each .yml workflow in .github/workflows counts as one."
 				icon='<svg class="size-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>'
+			/>
+			<MetricCard
+				title="Build Minutes"
+				value={formatMinutes(dashboardData.totalMinutes30d)}
+				subtitle="{dashboardData.billableIsEstimate ? '~' : ''}{formatMinutes(dashboardData.billableMinutes30d)} billable{dashboardData.billableIsEstimate ? ' (partial est.)' : ''}"
+				help="Raw minutes consumed in the last {dashboardData.timeWindowDays} days. Billable minutes use runner types detected from your workflow YAML files (Linux ×1, Windows ×2, macOS ×10). Workflows with dynamic runner expressions are estimated as Linux ×1."
+				icon='<svg class="size-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
+			/>
+			<MetricCard
+				title="Skip Rate"
+				value="{dashboardData.skipRate.toFixed(1)}%"
+				subtitle="of triggered runs skipped"
+				help="Percentage of workflow runs that were skipped (e.g. condition not met). High skip rates can indicate overly broad triggers or useful conditional logic."
+				icon='<svg class="size-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></svg>'
+			/>
+			<MetricCard
+				title="Total Skipped"
+				value={dashboardData.totalSkipped.toLocaleString()}
+				subtitle="last {dashboardData.timeWindowDays} days"
+				help="Total number of runs that completed with status skipped in the repo. Skipped runs did not execute jobs (e.g. path filters or condition not met)."
+				icon='<svg class="size-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>'
 			/>
 		</div>
 
@@ -467,6 +516,186 @@
 				<DurationChart metrics={dashboardData.workflowMetrics} />
 			</div>
 		</div>
+
+		<!-- Top skipped workflows -->
+		{#if dashboardData.workflowMetrics.filter((m) => m.skippedCount > 0).length > 0}
+			{@const topSkipped = [...dashboardData.workflowMetrics]
+				.filter((m) => m.skippedCount > 0)
+				.sort((a, b) => b.skippedCount - a.skippedCount)
+				.slice(0, 8)}
+			<div class="bg-card border border-border rounded-xl overflow-hidden">
+				<div class="px-5 py-4 border-b border-border">
+					<h3 class="text-sm font-semibold text-foreground">Top Skipped Workflows</h3>
+					<p class="text-xs text-muted-foreground mt-0.5">
+						Workflows with the most skipped runs (condition not met, path filters, etc.)
+					</p>
+				</div>
+				<div class="overflow-x-auto">
+					<table class="w-full text-xs">
+						<thead>
+							<tr class="border-b border-border bg-muted/30">
+								<th class="px-5 py-2.5 text-left font-medium text-muted-foreground">Workflow</th>
+								<th class="px-4 py-2.5 text-right font-medium text-muted-foreground">Skip rate</th>
+								<th class="px-4 py-2.5 text-right font-medium text-muted-foreground">Skipped</th>
+								<th class="px-4 py-2.5 text-right font-medium text-muted-foreground">Executed</th>
+							</tr>
+						</thead>
+						<tbody>
+							{#each topSkipped as row}
+								<tr class="border-b border-border/50 hover:bg-muted/30 transition-colors">
+									<td class="px-5 py-2.5">
+										<a
+											href="/dashboard/workflow/{row.workflowId}?owner={encodeURIComponent(dashboardData.owner)}&repo={encodeURIComponent(dashboardData.repo)}"
+											class="text-foreground font-medium truncate max-w-48 block hover:underline"
+											title={row.workflowName}
+										>
+											{row.workflowName}
+										</a>
+									</td>
+									<td class="px-4 py-2.5 text-right text-muted-foreground tabular-nums">
+										{row.skipRate.toFixed(1)}%
+									</td>
+									<td class="px-4 py-2.5 text-right text-muted-foreground tabular-nums">
+										{row.skippedCount.toLocaleString()}
+									</td>
+									<td class="px-4 py-2.5 text-right font-medium text-foreground tabular-nums">
+										{(row.successCount + row.failureCount).toLocaleString()}
+									</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+			</div>
+		{/if}
+
+		<!-- Minutes charts row -->
+		{#if dashboardData.totalMinutes30d > 0}
+			<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+				<MinutesDonutChart
+					data={dashboardData.minutesByWorkflow}
+					title="Minutes by Workflow"
+					subtitle="Breakdown of build time consumed per workflow"
+					totalMinutes={dashboardData.totalMinutes30d}
+				totalBillableMinutes={dashboardData.billableMinutes30d}
+				totalLabel="raw mins"
+				billableIsEstimate={dashboardData.billableIsEstimate}
+				/>
+				<MinutesTrendChart
+					data={dashboardData.minutesTrend}
+					title="Daily Build Minutes"
+					subtitle="Raw minutes consumed per day over the last {dashboardData.timeWindowDays} days"
+				/>
+			</div>
+
+			<!-- Efficiency insights -->
+			<div class="space-y-3">
+				<h2 class="text-sm font-medium text-muted-foreground">Efficiency Insights</h2>
+				<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+					<!-- Most expensive workflow -->
+					{#if dashboardData.minutesByWorkflow.length > 0}
+						{@const top = dashboardData.minutesByWorkflow[0]}
+						<div class="bg-card border border-border rounded-xl p-4 space-y-1">
+							<p class="text-xs text-muted-foreground">Most Expensive Workflow</p>
+							<p class="text-sm font-semibold text-foreground truncate" title={top.workflowName}>
+								{top.workflowName}
+							</p>
+							<p class="text-xs text-muted-foreground">
+								{formatMinutes(top.minutes)} raw · {top.percentage}% of total
+							</p>
+						</div>
+					{/if}
+
+					<!-- Wasted minutes -->
+					<div class="bg-card border border-border rounded-xl p-4 space-y-1">
+						<p class="text-xs text-muted-foreground">Wasted on Failures</p>
+						<p class="text-sm font-semibold {dashboardData.wastedMinutes > 0 ? 'text-destructive' : 'text-green-500'}">
+							{formatMinutes(dashboardData.wastedMinutes)}
+						</p>
+						<p class="text-xs text-muted-foreground">
+							{dashboardData.totalMinutes30d > 0
+								? Math.round((dashboardData.wastedMinutes / dashboardData.totalMinutes30d) * 100)
+								: 0}% of total minutes
+						</p>
+					</div>
+
+					<!-- Top branch -->
+					{#if dashboardData.topBranchByMinutes}
+						<div class="bg-card border border-border rounded-xl p-4 space-y-1">
+							<p class="text-xs text-muted-foreground">Costliest Branch</p>
+							<p class="text-sm font-semibold text-foreground font-mono truncate" title={dashboardData.topBranchByMinutes.branch}>
+								{dashboardData.topBranchByMinutes.branch}
+							</p>
+							<p class="text-xs text-muted-foreground">
+								{formatMinutes(dashboardData.topBranchByMinutes.minutes)} consumed
+							</p>
+						</div>
+					{/if}
+
+					<!-- Avg minutes per run -->
+					<div class="bg-card border border-border rounded-xl p-4 space-y-1">
+						<p class="text-xs text-muted-foreground">Avg per Run</p>
+						<p class="text-sm font-semibold text-foreground">
+							{dashboardData.totalRuns > 0
+								? formatMinutes(Math.round(dashboardData.totalMinutes30d / dashboardData.totalRuns))
+								: '—'}
+						</p>
+						<p class="text-xs text-muted-foreground">
+							across {totalRunsLabel} runs
+						</p>
+					</div>
+				</div>
+
+				<!-- Run frequency × duration table -->
+				{#if dashboardData.workflowMetrics.filter((m) => m.totalRuns > 0).length > 0}
+					<div class="bg-card border border-border rounded-xl overflow-hidden">
+						<div class="px-5 py-4 border-b border-border">
+							<h3 class="text-sm font-semibold text-foreground">Frequency × Duration</h3>
+							<p class="text-xs text-muted-foreground mt-0.5">Workflows sorted by estimated daily minutes consumed</p>
+						</div>
+						<div class="overflow-x-auto">
+							<table class="w-full text-xs">
+								<thead>
+									<tr class="border-b border-border bg-muted/30">
+										<th class="px-5 py-2.5 text-left font-medium text-muted-foreground">Workflow</th>
+										<th class="px-4 py-2.5 text-right font-medium text-muted-foreground">Runs / day</th>
+										<th class="px-4 py-2.5 text-right font-medium text-muted-foreground">Avg duration</th>
+										<th class="px-4 py-2.5 text-right font-medium text-muted-foreground">Est. daily mins</th>
+									</tr>
+								</thead>
+								<tbody>
+									{#each [...dashboardData.workflowMetrics]
+										.filter((m) => m.totalRuns > 0)
+										.map((m) => {
+											const runsPerDay = m.totalRuns / (dashboardData?.timeWindowDays ?? 30);
+											const avgMins = Math.ceil(m.avgDurationMs / 60_000);
+											const dailyMins = Math.round(runsPerDay * avgMins);
+											return { ...m, runsPerDay, dailyMins };
+										})
+										.sort((a, b) => b.dailyMins - a.dailyMins)
+										.slice(0, 8) as row}
+										<tr class="border-b border-border/50 hover:bg-muted/30 transition-colors">
+											<td class="px-5 py-2.5 text-foreground font-medium truncate max-w-48" title={row.workflowName}>
+												{row.workflowName}
+											</td>
+											<td class="px-4 py-2.5 text-right text-muted-foreground tabular-nums">
+												{row.runsPerDay.toFixed(1)}
+											</td>
+											<td class="px-4 py-2.5 text-right text-muted-foreground tabular-nums">
+												{formatDuration(row.avgDurationMs)}
+											</td>
+											<td class="px-4 py-2.5 text-right font-medium text-foreground tabular-nums">
+												{row.dailyMins > 0 ? formatMinutes(row.dailyMins) : '<1m'}
+											</td>
+										</tr>
+									{/each}
+								</tbody>
+							</table>
+						</div>
+					</div>
+				{/if}
+			</div>
+		{/if}
 
 		<!-- Workflows list -->
 		<WorkflowList

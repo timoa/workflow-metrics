@@ -23,11 +23,39 @@
 		return padding.top + chartHeight - (val / maxTotal) * chartHeight;
 	}
 
+	// Stacked: success at bottom, then failure, then skipped on top
 	const successPath = $derived(
 		data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${x(i)} ${y(d.success)}`).join(' ')
 	);
 	const failurePath = $derived(
-		data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${x(i)} ${y(d.failure)}`).join(' ')
+		data
+			.map((d, i) => `${i === 0 ? 'M' : 'L'} ${x(i)} ${y(d.success + d.failure)}`)
+			.join(' ')
+	);
+	const skippedPath = $derived(
+		data
+			.map((d, i) =>
+				`${i === 0 ? 'M' : 'L'} ${x(i)} ${y(d.success + d.failure + d.skipped)}`
+			)
+			.join(' ')
+	);
+	// Reversed paths for stacked band fills (failure band = between success and failure line, etc.)
+	const successPathReversed = $derived(
+		data
+			.map((_, i) => {
+				const j = data.length - 1 - i;
+				return `${i === 0 ? 'M' : 'L'} ${x(j)} ${y(data[j].success)}`;
+			})
+			.join(' ')
+	);
+	const failurePathReversed = $derived(
+		data
+			.map((_, i) => {
+				const j = data.length - 1 - i;
+				const d = data[j];
+				return `${i === 0 ? 'M' : 'L'} ${x(j)} ${y(d.success + d.failure)}`;
+			})
+			.join(' ')
 	);
 
 	// Format x-axis dates to show only a few labels
@@ -104,6 +132,9 @@
 			<span class="flex items-center gap-1.5">
 				<span class="size-2 rounded-full bg-destructive inline-block"></span> Failure
 			</span>
+			<span class="flex items-center gap-1.5">
+				<span class="size-2 rounded-full bg-muted-foreground inline-block"></span> Skipped
+			</span>
 			{#if commits.length > 0}
 				<span class="flex items-center gap-1.5" title="Commits that changed .github/workflows">
 					<span
@@ -137,6 +168,10 @@
 						<stop offset="0%" stop-color="var(--color-destructive)" stop-opacity="0.4" />
 						<stop offset="100%" stop-color="var(--color-destructive)" stop-opacity="0" />
 					</linearGradient>
+					<linearGradient id="run-history-skipped" x1="0" x2="0" y1="0" y2="1">
+						<stop offset="0%" stop-color="hsl(var(--muted-foreground))" stop-opacity="0.4" />
+						<stop offset="100%" stop-color="hsl(var(--muted-foreground))" stop-opacity="0" />
+					</linearGradient>
 				</defs>
 				<!-- Grid lines -->
 				{#each [0, 0.25, 0.5, 0.75, 1] as pct}
@@ -152,17 +187,27 @@
 					/>
 				{/each}
 
-				<!-- Fill areas and lines: failure first, then success on top (success = default focus) -->
-				<path
-					d="{failurePath} L {x(data.length - 1)} {y(0)} L {x(0)} {y(0)} Z"
-					fill="url(#run-history-failure)"
-				/>
+				<!-- Stacked areas: success (bottom), failure band, skipped band (top) -->
 				<path
 					d="{successPath} L {x(data.length - 1)} {y(0)} L {x(0)} {y(0)} Z"
 					fill="url(#run-history-success)"
 				/>
-				<path d={failurePath} fill="none" stroke="var(--color-destructive)" stroke-width="2" />
+				<path
+					d="{failurePath} L {successPathReversed} Z"
+					fill="url(#run-history-failure)"
+				/>
+				<path
+					d="{skippedPath} L {failurePathReversed} Z"
+					fill="url(#run-history-skipped)"
+				/>
 				<path d={successPath} fill="none" stroke="var(--color-success)" stroke-width="2" />
+				<path d={failurePath} fill="none" stroke="var(--color-destructive)" stroke-width="2" />
+				<path
+					d={skippedPath}
+					fill="none"
+					stroke="hsl(var(--muted-foreground))"
+					stroke-width="2"
+				/>
 
 				<!-- Commit markers (workflow file changes): dashed vertical line so it’s clearly visible -->
 				{#each commitMarkers as marker}
@@ -226,6 +271,12 @@
 							<span class="size-2 rounded-full bg-destructive"></span>
 							Failure: {hoveredPoint.failure}
 						</span>
+						{#if hoveredPoint.skipped > 0}
+							<span class="flex items-center gap-1.5">
+								<span class="size-2 rounded-full bg-muted-foreground"></span>
+								Skipped: {hoveredPoint.skipped}
+							</span>
+						{/if}
 						{#if hoveredPoint.cancelled > 0}
 							<span class="col-span-2 flex items-center gap-1.5">
 								<span class="size-2 rounded-full bg-muted-foreground"></span>
