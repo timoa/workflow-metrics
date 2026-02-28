@@ -15,17 +15,41 @@ An open-source dashboard for GitHub Actions metrics with AI-powered optimization
 ## Features
 
 - **GitHub OAuth login** — Sign in with GitHub using `repo` and `read:org` scopes to access your workflows
-- **Repository overview dashboard** — Total runs, success rate, average duration, and active workflows with 30-day trends
+- **Repository overview dashboard** — Total runs, success rate, average duration, active workflows, and 7→30 day progressive loading
 - **DORA metrics** — Deployment Frequency, Lead Time for Changes, Change Failure Rate, and Mean Time to Recovery over the last 30 days
-- **Run history chart** — Visual breakdown of success, failure, and cancelled runs over time
+- **Run history + workflow-change markers** — Visual breakdown of success/failure/cancelled runs plus commit markers when workflow files changed
 - **Duration by workflow** — Bar chart comparing average duration across all workflows
+- **Build minutes + billable minutes** — Raw build minutes with billable estimate using GitHub-hosted runner multipliers (Linux ×1, Windows ×2, macOS ×10)
+- **Minutes analytics** — Minutes by workflow, daily build-minutes trend, per-workflow minutes by job, and daily workflow minutes trend
+- **Efficiency insights** — Wasted minutes on failures, most expensive workflow, costliest branch, and frequency × duration table
+- **Skip analytics** — Global skip rate, per-workflow skip rate, and top skipped workflows table
 - **Recent runs table** — Filterable list of the latest runs with status, branch, actor, and duration
 - **Workflow list** — All workflows with live success rate and quick navigation
-- **Workflow detail dashboard** — Deep dive into a single workflow: P50/P95 duration, job breakdown, duration trend
-- **Job breakdown** — Per-job timing analysis (avg, min, max) from recent completed runs
-- **AI optimization with Mistral** — Click "Optimize with AI" on any workflow to get streaming, actionable suggestions (caching, parallelization, runner optimization, etc.)
+- **Workflow detail dashboard** — Deep dive into a single workflow: P50/P95 duration, build minutes, billable minutes, skip rate, and cost efficiency
+- **Workflow structure flow chart** — Interactive workflow graph (trigger + job dependency DAG) with runner labels and step counts
+- **Job + step breakdowns** — Per-job timing analysis (avg/min/max) and slowest-job step-level breakdown from recent completed runs
+- **AI optimization with Mistral** — Click "Optimize with AI" on any workflow to get streaming, actionable suggestions (caching, parallelization, runner optimization, cost, etc.)
 - **Settings page** — Manage GitHub connections, tracked repositories, Mistral API key, and theme
 - **Dark / light mode** — Dark by default, persisted per user preference
+
+## Workflow Flow Chart
+
+Workflow detail pages include an interactive flow chart that visualizes trigger-to-job execution order and `needs` dependencies.
+
+```mermaid
+flowchart LR
+    T([Trigger])
+    L[lint]
+    U[unit-tests]
+    B[build]
+    D[deploy]
+
+    T --> L
+    T --> U
+    L --> B
+    U --> B
+    B --> D
+```
 
 ## Tech Stack
 

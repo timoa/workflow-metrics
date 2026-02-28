@@ -8,6 +8,7 @@
 		type Edge,
 		type Node
 	} from '@xyflow/svelte';
+	import { untrack } from 'svelte';
 	import '@xyflow/svelte/dist/style.css';
 	import WorkflowTriggerNode from '$lib/components/dashboard/WorkflowTriggerNode.svelte';
 	import WorkflowJobNodeComponent from '$lib/components/dashboard/WorkflowJobNode.svelte';
@@ -50,11 +51,9 @@
 
 	// Calculate dynamic height based on job count (compact when 1 job)
 	const jobCount = $derived(nodes.length);
-	const canvasHeight = $derived(() => {
-		if (jobCount <= 1) return compact ? 140 : 250;
-		if (jobCount <= 3) return 350;
-		return 500;
-	});
+	const canvasHeight = $derived(
+		jobCount <= 1 ? (compact ? 140 : 250) : jobCount <= 3 ? 350 : 500
+	);
 
 	// fitView: compact (1 trigger + 1 job) caps maxZoom so nodes don't fill the entire canvas.
 	const fitViewOptions = $derived(compact ? { padding: 0.4, maxZoom: 0.8 } : { padding: 0.2 });
@@ -121,8 +120,23 @@
 		return [...triggerEdges, ...jobEdges];
 	}
 
-	const flowNodes = $derived(
-		buildNodes(nodes, {
+	let flowNodes = $state.raw<Node[]>(
+		untrack(() =>
+			buildNodes(nodes, {
+				nodeW: NODE_WIDTH,
+				nodeH: NODE_HEIGHT,
+				hGap: HORIZONTAL_GAP,
+				vGap: VERTICAL_GAP,
+				triggerW: TRIGGER_WIDTH,
+				triggerH: TRIGGER_HEIGHT,
+				compact
+			})
+		)
+	);
+	let flowEdges = $state.raw<Edge[]>(untrack(() => buildEdges(nodes, edges)));
+
+	$effect(() => {
+		flowNodes = buildNodes(nodes, {
 			nodeW: NODE_WIDTH,
 			nodeH: NODE_HEIGHT,
 			hGap: HORIZONTAL_GAP,
@@ -130,9 +144,9 @@
 			triggerW: TRIGGER_WIDTH,
 			triggerH: TRIGGER_HEIGHT,
 			compact
-		})
-	);
-	const flowEdges = $derived(buildEdges(nodes, edges));
+		});
+		flowEdges = buildEdges(nodes, edges);
+	});
 
 </script>
 
@@ -152,8 +166,8 @@
 			style="height: {canvasHeight}px; min-height: {canvasHeight}px;"
 		>
 			<SvelteFlow
-				nodes={flowNodes}
-				edges={flowEdges}
+				bind:nodes={flowNodes}
+				bind:edges={flowEdges}
 				nodeTypes={{ trigger: WorkflowTriggerNode, job: WorkflowJobNodeComponent }}
 				colorMode={isDark ? 'dark' : 'light'}
 				fitView
