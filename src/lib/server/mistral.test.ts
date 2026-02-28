@@ -173,7 +173,7 @@ jobs:
 
 		vi.mocked(generateObject).mockResolvedValue({
 			object: mockResult,
-			usage: { promptTokens: 1000, completionTokens: 500 }
+			usage: { inputTokens: 1000, outputTokens: 500 }
 		} as never);
 
 		const result = await generateOptimizationReport(
@@ -191,7 +191,7 @@ jobs:
 	it('calls generateObject with correct parameters', async () => {
 		vi.mocked(generateObject).mockResolvedValue({
 			object: { optimizations: [], summary: {} },
-			usage: { promptTokens: 100, completionTokens: 50 }
+			usage: { inputTokens: 100, outputTokens: 50 }
 		} as never);
 
 		await generateOptimizationReport('test-api-key', 'CI', mockWorkflowYaml, mockMetrics);
@@ -201,7 +201,7 @@ jobs:
 				model: expect.anything(),
 				schema: expect.anything(),
 				prompt: expect.stringContaining('Workflow: CI'),
-				maxTokens: 4096
+				maxOutputTokens: 4096
 			})
 		);
 	});
@@ -313,7 +313,7 @@ jobs:
 			expect.objectContaining({
 				model: expect.anything(),
 				prompt: expect.stringContaining('Original YAML'),
-				maxTokens: 4096
+				maxOutputTokens: 4096
 			})
 		);
 	});

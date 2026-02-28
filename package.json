@@ -27,13 +27,13 @@
 		"test:watch": "vitest"
 	},
 	"dependencies": {
-		"@ai-sdk/mistral": "^1.2.8",
+		"@ai-sdk/mistral": "^2.0.28",
 		"@fortawesome/fontawesome-free": "^7.2.0",
 		"@octokit/rest": "^21.1.1",
 		"@supabase/ssr": "^0.5.0",
 		"@supabase/supabase-js": "^2.49.4",
 		"@xyflow/svelte": "^1.5.1",
-		"ai": "^4.3.16",
+		"ai": "^5.0.141",
 		"dompurify": "^3.3.1",
 		"highlight.js": "^11.11.1",
 		"layerchart": "^1.0.13",
@@ -43,10 +43,11 @@
 	},
 	"devDependencies": {
 		"@eslint/js": "^9.26.0",
-		"@sveltejs/adapter-cloudflare": "^5.1.0",
-		"@sveltejs/kit": "^2.50.2",
+		"@sveltejs/adapter-cloudflare": "^7.2.8",
+		"@sveltejs/kit": "^2.53.0",
 		"@sveltejs/vite-plugin-svelte": "^6.2.4",
 		"@tailwindcss/vite": "^4.1.8",
+		"@vitest/coverage-v8": "^3.0.0",
 		"bits-ui": "^1.3.18",
 		"clsx": "^2.1.1",
 		"eslint": "^9.26.0",
@@ -58,7 +59,7 @@
 		"prettier-plugin-svelte": "^3.3.3",
 		"prettier-plugin-tailwindcss": "^0.6.11",
 		"sharp": "^0.34.5",
-		"svelte": "^5.51.0",
+		"svelte": "^5.53.5",
 		"svelte-check": "^4.3.6",
 		"tailwind-merge": "^3.3.0",
 		"tailwindcss": "^4.1.8",
@@ -66,8 +67,7 @@
 		"tw-animate-css": "^1.2.9",
 		"typescript": "~5.9.0",
 		"typescript-eslint": "^8.56.1",
-		"vite": "^7.3.1",
-		"@vitest/coverage-v8": "^3.0.0",
+		"vite": "^6.2.6",
 		"vitest": "^3.0.0"
 	},
 	"pnpm": {
@@ -75,6 +75,9 @@
 			"ignoreGhsas": [
 				"GHSA-3ppc-4f35-3m26"
 			]
+		},
+		"overrides": {
+			"cookie": "^0.7.0"
 		}
 	}
 }

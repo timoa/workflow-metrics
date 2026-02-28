@@ -94,14 +94,14 @@ export async function generateOptimizationReport(
 		model: mistral('mistral-large-latest'),
 		schema: OptimizationSchema,
 		prompt,
-		maxTokens: 4096
+		maxOutputTokens: 4096
 	});
 
 	return {
 		result: object as OptimizationResult,
 		usage: {
-			promptTokens: usage.promptTokens,
-			completionTokens: usage.completionTokens
+			promptTokens: usage.inputTokens ?? 0,
+			completionTokens: usage.outputTokens ?? 0
 		}
 	};
 }
@@ -138,7 +138,7 @@ Return ONLY the complete, updated YAML file with all optimizations applied. Do n
 	const { text } = await generateText({
 		model: mistral('mistral-large-latest'),
 		prompt,
-		maxTokens: 4096
+		maxOutputTokens: 4096
 	});
 
 	// Strip any accidental markdown fences if the model wraps the output
