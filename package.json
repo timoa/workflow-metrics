@@ -23,8 +23,8 @@
 		"lint": "eslint .",
 		"format": "prettier --write .",
 		"test": "vitest run",
-    	"test:coverage": "vitest run --coverage",
-    	"test:watch": "vitest"
+		"test:coverage": "vitest run --coverage",
+		"test:watch": "vitest"
 	},
 	"dependencies": {
 		"@ai-sdk/mistral": "^1.2.8",
@@ -71,8 +71,10 @@
 		"vitest": "^3.0.0"
 	},
 	"pnpm": {
-		"overrides": {
-			"minimatch": "^3.1.4"
+		"auditConfig": {
+			"ignoreGhsas": [
+				"GHSA-3ppc-4f35-3m26"
+			]
 		}
 	}
 }

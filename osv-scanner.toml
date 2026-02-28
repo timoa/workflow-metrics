@@ -1,0 +1,10 @@
+[[IgnoredVulns]]
+id = "GHSA-3ppc-4f35-3m26"
+reason = """
+minimatch ReDoS via repeated wildcards. Affects @vscode/vsce and its transitive
+dependency glob>minimatch. Upgrading minimatch to >=10.2.1 (the patched version)
+is incompatible with @vscode/vsce due to the ESM-only migration in minimatch v10,
+which breaks the CommonJS require() calls inside vsce. The vulnerability is only
+exploitable when untrusted user input is passed directly as a glob pattern, which
+does not occur in this build tooling context.
+"""
