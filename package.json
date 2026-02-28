@@ -27,7 +27,7 @@
 		"test:watch": "vitest"
 	},
 	"dependencies": {
-		"@ai-sdk/mistral": "^2.0.28",
+		"@ai-sdk/mistral": "^3.0.0",
 		"@fortawesome/fontawesome-free": "^7.2.0",
 		"@octokit/rest": "^22.0.0",
 		"@supabase/ssr": "^0.5.0",
