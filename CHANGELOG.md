@@ -1,3 +1,10 @@
+## [0.1.1](https://github.com/timoa/workflow-metrics/compare/v0.1.0...v0.1.1) (2026-02-28)
+
+
+### Bug Fixes
+
+* **cicd:** fix the deploy workflow ([c15b3fb](https://github.com/timoa/workflow-metrics/commit/c15b3fbe8e26cf17b522255cbdc55d6ad0d58e49))
+
 # [0.1.0](https://github.com/timoa/workflow-metrics/compare/v0.0.1...v0.1.0) (2026-02-28)
 
 
