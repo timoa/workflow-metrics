@@ -1,3 +1,10 @@
+## [0.1.5](https://github.com/timoa/workflow-metrics/compare/v0.1.4...v0.1.5) (2026-02-28)
+
+
+### Bug Fixes
+
+* **deps:** update dependency @octokit/rest to v22 ([012ac9b](https://github.com/timoa/workflow-metrics/commit/012ac9bcc0b17528aada1927c38693cfdb60d71d))
+
 ## [0.1.4](https://github.com/timoa/workflow-metrics/compare/v0.1.3...v0.1.4) (2026-02-28)
 
 
