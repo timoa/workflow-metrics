@@ -387,7 +387,18 @@ describe('buildWorkflowDetailData', () => {
 			} as GitHubWorkflowRun
 		];
 		const mockJobs: GitHubJob[] = [
-			{ id: 1, run_id: 1, name: 'build', status: 'completed', started_at: new Date().toISOString(), completed_at: new Date(Date.now() + 30000).toISOString(), labels: ['ubuntu-latest'], steps: [] } as GitHubJob
+			{
+				id: 1,
+				run_id: 1,
+				name: 'build',
+				status: 'completed',
+				conclusion: 'success',
+				started_at: new Date().toISOString(),
+				completed_at: new Date(Date.now() + 30000).toISOString(),
+				runner_name: 'GitHub Actions',
+				labels: ['ubuntu-latest'],
+				steps: []
+			} as GitHubJob
 		];
 
 		vi.mocked(octokit.rest.actions.listRepoWorkflows).mockResolvedValue({

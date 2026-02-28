@@ -17,36 +17,43 @@ const createMockSupabaseClient = () => {
 		from: vi.fn((table: string) => {
 			mockChains[table] = {
 				select: vi.fn((fields) => {
-					mockChains[table].selectedFields = fields;
-					return mockChains[table];
+					const chain = mockChains[table];
+					chain.selectedFields = fields;
+					return chain;
 				}),
 				eq: vi.fn((field, value) => {
-					if (!mockChains[table].filters) mockChains[table].filters = {};
-					mockChains[table].filters[field] = value;
-					return mockChains[table];
+					const chain = mockChains[table];
+					const filters = (chain.filters as Record<string, unknown> | undefined) ?? {};
+					filters[field] = value;
+					chain.filters = filters;
+					return chain;
 				}),
 				lt: vi.fn((field, value) => {
-					if (!mockChains[table].filters) mockChains[table].filters = {};
-					mockChains[table].filters[field] = { op: 'lt', value };
+					const chain = mockChains[table];
+					const filters = (chain.filters as Record<string, unknown> | undefined) ?? {};
+					filters[field] = { op: 'lt', value };
+					chain.filters = filters;
 					return Promise.resolve({ error: null });
 				}),
 				delete: vi.fn(() => {
 					return {
 						lt: vi.fn((field, value) => {
-							mockChains[table].deleteFilter = { field, value };
+							const chain = mockChains[table];
+							chain.deleteFilter = { field, value };
 							return Promise.resolve({ error: null });
 						})
 					};
 				}),
 				upsert: vi.fn((data, options) => {
-					mockChains[table].upsertData = data;
-					mockChains[table].upsertOptions = options;
+					const chain = mockChains[table];
+					chain.upsertData = data;
+					chain.upsertOptions = options;
 					return {
 						select: vi.fn((fields) => {
-							mockChains[table].selectFields = fields;
+							chain.selectFields = fields;
 							return {
 								limit: vi.fn((n) => {
-									mockChains[table].limit = n;
+									chain.limit = n;
 									return Promise.resolve({
 										data: [{ id: 1 }],
 										error: null
@@ -71,7 +78,10 @@ describe('deleteExpiredWorkflowRunsCache', () => {
 		await deleteExpiredWorkflowRunsCache(builder as never);
 		expect(builder.from).toHaveBeenCalledWith('workflow_runs_cache');
 		expect(mockChains['workflow_runs_cache'].deleteFilter).toBeDefined();
-		expect(mockChains['workflow_runs_cache'].deleteFilter.field).toBe('fetched_at');
+		const deleteFilter = mockChains['workflow_runs_cache'].deleteFilter as
+			| { field: string; value: unknown }
+			| undefined;
+		expect(deleteFilter?.field).toBe('fetched_at');
 	});
 });
 

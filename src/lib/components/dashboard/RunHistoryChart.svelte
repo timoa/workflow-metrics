@@ -92,7 +92,10 @@
 
 	const hoveredMarker = $derived(
 		hoveredIndex != null && commitMarkers.length
-			? commitMarkers.find((m) => m.date === data[hoveredIndex]?.date) ?? null
+			? (() => {
+					const hoveredDate = data[hoveredIndex]?.date;
+					return hoveredDate ? commitMarkers.find((m) => m.date === hoveredDate) ?? null : null;
+				})()
 			: null
 	);
 

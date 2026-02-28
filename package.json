@@ -27,13 +27,13 @@
 		"test:watch": "vitest"
 	},
 	"dependencies": {
-		"@ai-sdk/mistral": "^2.0.28",
+		"@ai-sdk/mistral": "^3.0.21",
 		"@fortawesome/fontawesome-free": "^7.2.0",
 		"@octokit/rest": "^22.0.0",
 		"@supabase/ssr": "^0.5.0",
 		"@supabase/supabase-js": "^2.49.4",
 		"@xyflow/svelte": "^1.5.1",
-		"ai": "^6.0.0",
+		"ai": "^6.0.105",
 		"dompurify": "^3.3.1",
 		"highlight.js": "^11.11.1",
 		"layerchart": "^1.0.13",
