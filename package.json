@@ -33,7 +33,7 @@
 		"@supabase/ssr": "^0.5.0",
 		"@supabase/supabase-js": "^2.49.4",
 		"@xyflow/svelte": "^1.5.1",
-		"ai": "^5.0.141",
+		"ai": "^6.0.0",
 		"dompurify": "^3.3.1",
 		"highlight.js": "^11.11.1",
 		"layerchart": "^1.0.13",
