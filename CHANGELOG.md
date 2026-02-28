@@ -1,3 +1,10 @@
+## [0.1.3](https://github.com/timoa/workflow-metrics/compare/v0.1.2...v0.1.3) (2026-02-28)
+
+
+### Bug Fixes
+
+* **workflow:** fix the workflow dashboard loading ([c5ff2d4](https://github.com/timoa/workflow-metrics/commit/c5ff2d44ac8b9f750f21acdbae2764fe223f9292))
+
 ## [0.1.2](https://github.com/timoa/workflow-metrics/compare/v0.1.1...v0.1.2) (2026-02-28)
 
 
