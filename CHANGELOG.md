@@ -1,3 +1,11 @@
+## [0.1.6](https://github.com/timoa/workflow-metrics/compare/v0.1.5...v0.1.6) (2026-02-28)
+
+
+### Bug Fixes
+
+* **deps:** update dependency ai to v6 ([2b72aad](https://github.com/timoa/workflow-metrics/commit/2b72aad98416098e0845600eb0a7ef3b6eff72d1))
+* **deps:** update to AI v6 and AI SDK Mistral v3 ([916c1a8](https://github.com/timoa/workflow-metrics/commit/916c1a8d6fa6ccf573213b4ca0728e9b80856b96))
+
 ## [0.1.5](https://github.com/timoa/workflow-metrics/compare/v0.1.4...v0.1.5) (2026-02-28)
 
 
