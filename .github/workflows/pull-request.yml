@@ -1,0 +1,87 @@
+name: Pull Request
+
+on:
+  pull_request:
+    branches: [main]
+
+# Declare default permissions as read only.
+permissions: read-all
+
+jobs:
+  ci:
+    name: Lint, Test, Build & Security
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@5ef0c079ce82195b2a36a210272d6b661572d83e # v2.14.2
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            api.github.com:443
+            cli.codecov.io:443
+            github.com:443
+            ingest.codecov.io:443
+            keybase.io:443
+            o26192.ingest.us.sentry.io:443
+            registry.npmjs.org:443
+            release-assets.githubusercontent.com:443
+            storage.googleapis.com:443
+
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
+        with:
+          version: 10
+
+      - name: Get pnpm store directory
+        id: pnpm-store
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - name: Cache pnpm store
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: ${{ steps.pnpm-store.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Test with coverage
+        run: pnpm test:coverage
+
+      - name: Report coverage percentage
+        run: |
+          LINES=$(jq -r '.total.lines.pct' coverage/coverage-summary.json)
+          STATEMENTS=$(jq -r '.total.statements.pct' coverage/coverage-summary.json)
+          echo "## Test coverage" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Coverage |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|----------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Lines** | ${LINES}% |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Statements** | ${STATEMENTS}% |" >> $GITHUB_STEP_SUMMARY
+
+      # - name: Upload coverage to Codecov
+      #   uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
+      #   with:
+      #     files: ./coverage/lcov.info
+      #     token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Build application
+        run: pnpm run build
+
+      - name: Audit dependencies
+        run: pnpm audit --audit-level=high
+        continue-on-error: false
