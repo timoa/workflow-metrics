@@ -34,7 +34,7 @@
 			<div class="flex flex-wrap items-center gap-3">
 				<span class="text-xs text-muted-foreground">Show</span>
 				<div class="flex rounded-md border border-border bg-muted/30 p-0.5" role="group" aria-label="Items per page">
-					{#each PAGE_SIZE_OPTIONS as size}
+					{#each PAGE_SIZE_OPTIONS as size (size)}
 						<button
 							type="button"
 							class="px-2.5 py-1 text-xs font-medium rounded transition-colors {pageSize === size
@@ -69,12 +69,12 @@
 					</tr>
 				</thead>
 				<tbody>
-					{#each paginatedRuns as run}
+					{#each paginatedRuns as run (run.runId)}
 						<tr class="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
 							<td class="px-5 py-3">
 								<div class="flex items-center gap-2">
 									<a
-										href="/dashboard/workflow/{run.workflowId}?owner={owner}&repo={repo}"
+										href={`/dashboard/workflow/${run.workflowId}?owner=${owner}&repo=${repo}`}
 										class="font-medium text-foreground hover:text-primary transition-colors truncate max-w-48"
 										title={run.workflowName}
 									>

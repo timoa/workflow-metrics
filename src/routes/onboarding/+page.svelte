@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { enhance, deserialize, applyAction } from '$app/forms';
+	import { SvelteSet } from 'svelte/reactivity';
 
 	let { data } = $props();
 
 	let selectedAccount = $state<string | null>(null);
 	let repos = $state<Array<{ id: number; name: string; fullName: string; isPrivate: boolean }>>([]);
-	let selectedRepos = $state<Set<number>>(new Set());
+	let selectedRepos = new SvelteSet<number>();
 	let loadingRepos = $state(false);
 	let saving = $state(false);
 	let repoError = $state<string | null>(null);
@@ -14,7 +15,7 @@
 		selectedAccount = account.login;
 		loadingRepos = true;
 		repos = [];
-		selectedRepos = new Set();
+		selectedRepos.clear();
 		repoError = null;
 
 		const formData = new FormData();
@@ -39,10 +40,8 @@
 	}
 
 	function toggleRepo(id: number) {
-		const next = new Set(selectedRepos);
-		if (next.has(id)) next.delete(id);
-		else next.add(id);
-		selectedRepos = next;
+		if (selectedRepos.has(id)) selectedRepos.delete(id);
+		else selectedRepos.add(id);
 	}
 
 	function getSelectedReposData() {
@@ -91,17 +90,17 @@
 			{#if data.addOrgOnly && data.accounts.length > 0}
 				<p class="text-sm text-muted-foreground">
 					Don't see all your organizations? GitHub only shows orgs you authorized when you signed in.
-					<a
-						href="/auth/login/github?next=/onboarding?add=org"
-						class="text-primary hover:underline font-medium"
-					>
-						Update GitHub permissions
+				<a
+					href="/auth/login/github?next=/onboarding?add=org"
+					class="text-primary hover:underline font-medium"
+				>
+					Update GitHub permissions
 					</a>
 					to grant access to more organizations.
 				</p>
 			{/if}
 			<div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-				{#each data.accounts as account}
+				{#each data.accounts as account (account.login)}
 					<button
 						onclick={() => selectAccount(account)}
 						class="flex items-center gap-3 p-3 rounded-lg border transition-colors text-left
@@ -147,7 +146,7 @@
 					<p class="text-center text-muted-foreground py-6 text-sm">No repositories found</p>
 				{:else}
 					<div class="space-y-2 max-h-80 overflow-y-auto">
-						{#each repos as repo}
+						{#each repos as repo (repo.id)}
 							<label class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors
 								{selectedRepos.has(repo.id)
 									? 'border-primary bg-primary/5'

@@ -33,13 +33,20 @@
 		class?: string;
 	} = $props();
 
-	let isDark = $state(false);
+	// eslint-disable-next-line svelte/prefer-writable-derived
 	let fitViewCallback = $state<(() => void) | null>(null);
 
+	function getIsDark() {
+		if (typeof document === 'undefined') return false;
+		return document.documentElement.classList.contains('dark');
+	}
+
+	let isDark = $state(getIsDark());
+
 	$effect(() => {
-		isDark = document.documentElement.classList.contains('dark');
+		if (typeof document === 'undefined') return;
 		const observer = new MutationObserver(() => {
-			isDark = document.documentElement.classList.contains('dark');
+			isDark = getIsDark();
 		});
 		observer.observe(document.documentElement, { attributeFilter: ['class'] });
 		return () => observer.disconnect();
@@ -47,9 +54,11 @@
 
 	// Calculate dynamic height based on job count (compact when 1 job)
 	const jobCount = $derived(nodes.length);
-	const canvasHeight = $derived(
-		jobCount <= 1 ? (compact ? 140 : 250) : jobCount <= 3 ? 350 : 500
-	);
+	const canvasHeight = $derived(() => {
+		if (jobCount <= 1) return compact ? 140 : 250;
+		if (jobCount <= 3) return 350;
+		return 500;
+	});
 
 	// fitView: compact (1 trigger + 1 job) caps maxZoom so nodes don't fill the entire canvas.
 	const fitViewOptions = $derived(compact ? { padding: 0.4, maxZoom: 0.8 } : { padding: 0.2 });

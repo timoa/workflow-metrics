@@ -28,7 +28,7 @@
 
 	<!-- Navigation -->
 	<nav class="flex-1 py-3 space-y-1">
-		{#each navItems as item}
+		{#each navItems as item (item.label)}
 			<Tooltip.Root>
 				<Tooltip.Trigger>
 					{#snippet child({ props })}
@@ -42,7 +42,8 @@
 									: 'border-l-transparent text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
 							)}
 						>
-							{@html item.icon}
+							<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+						{@html item.icon}
 						</a>
 					{/snippet}
 				</Tooltip.Trigger>

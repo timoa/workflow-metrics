@@ -48,6 +48,7 @@
 		</div>
 		{#if icon}
 			<div class="size-8 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+				<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 				{@html icon}
 			</div>
 		{/if}

@@ -7,6 +7,7 @@
 	import json from 'highlight.js/lib/languages/json';
 	import javascript from 'highlight.js/lib/languages/javascript';
 	import { tick } from 'svelte';
+	import { SvelteSet } from 'svelte/reactivity';
 	import type { WorkflowMetrics, OptimizationHistoryEntry } from '$lib/types/metrics';
 
 	hljs.registerLanguage('yaml', yaml);
@@ -53,7 +54,7 @@
 	];
 
 	let currentStep = $state<StepId | null>(null);
-	let completedSteps = $state(new Set<StepId>());
+	let completedSteps = new SvelteSet<StepId>();
 	let currentMessage = $state('');
 	let messageKey = $state(0); // increment to trigger fade transition
 
@@ -92,9 +93,9 @@
 	);
 
 	// ── Accordion open state ──────────────────────────────────────────────────
-	let openItems = $state(new Set<string>());
+	let openItems = new SvelteSet<string>();
 	// Checked items for PR creation
-	let checkedItems = $state(new Set<string>());
+	let checkedItems = new SvelteSet<string>();
 
 	// PR creation state
 	let applyingPr = $state(false);
@@ -110,7 +111,7 @@
 			await navigator.clipboard.writeText(code);
 			copiedId = id;
 			setTimeout(() => (copiedId = null), 2000);
-		} catch (_) {
+		} catch {
 			// ignore
 		}
 	}
@@ -124,7 +125,7 @@
 			await navigator.clipboard.writeText(parts.join('\n\n'));
 			copiedAll = true;
 			setTimeout(() => (copiedAll = false), 2000);
-		} catch (_) {
+		} catch {
 			// ignore
 		}
 	}
@@ -135,7 +136,7 @@
 		prUrl = null;
 		prError = null;
 		currentStep = null;
-		completedSteps = new Set();
+		completedSteps.clear();
 		stopCategoryAnimation();
 
 		try {
@@ -177,7 +178,7 @@
 						const p = payload as { step: StepId; message: string };
 						// Mark previous step complete
 						if (currentStep) {
-							completedSteps = new Set([...completedSteps, currentStep]);
+							completedSteps.add(currentStep);
 						}
 						currentStep = p.step;
 						stopCategoryAnimation();
@@ -188,9 +189,9 @@
 						}
 					} else if (eventName === 'complete') {
 						const p = payload as OptimizationHistoryEntry;
-						entry = p;
-						openItems = new Set();
-						checkedItems = new Set();
+		entry = p;
+					openItems.clear();
+					checkedItems.clear();
 						break outer;
 					} else if (eventName === 'error') {
 						const p = payload as { message: string };
@@ -213,7 +214,7 @@
 	// Highlight code blocks after DOM update (re-run when openItems changes so expanded blocks get highlighted)
 	$effect(() => {
 		if (!entry || !browser) return;
-		openItems;
+		// Re-run highlight effect when entry changes or browser is available
 		void tick().then(() => {
 			document.querySelectorAll('.opt-code-block code.hljs').forEach((el) => {
 				hljs.highlightElement(el as HTMLElement);
@@ -222,17 +223,13 @@
 	});
 
 	function toggleOpen(id: string) {
-		const next = new Set(openItems);
-		if (next.has(id)) next.delete(id);
-		else next.add(id);
-		openItems = next;
+		if (openItems.has(id)) openItems.delete(id);
+		else openItems.add(id);
 	}
 
 	function toggleChecked(id: string) {
-		const next = new Set(checkedItems);
-		if (next.has(id)) next.delete(id);
-		else next.add(id);
-		checkedItems = next;
+		if (checkedItems.has(id)) checkedItems.delete(id);
+		else checkedItems.add(id);
 	}
 
 	const selectedOptimizations = $derived(
@@ -266,7 +263,7 @@
 
 			const data = await response.json() as { prUrl: string; branchName: string };
 			prUrl = data.prUrl;
-			checkedItems = new Set();
+			checkedItems.clear();
 		} catch (e) {
 			prError = e instanceof Error ? e.message : 'Unknown error';
 		} finally {
@@ -412,7 +409,7 @@
 
 				<!-- Step checklist -->
 				<div class="w-full max-w-xs space-y-2">
-					{#each STEP_ORDER as step}
+					{#each STEP_ORDER as step (step)}
 						{@const isDone = completedSteps.has(step)}
 						{@const isActive = currentStep === step}
 						<div class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {isActive ? 'bg-primary/8' : ''}">
@@ -540,7 +537,8 @@
 												</svg>
 											{/if}
 										</button>
-										{@html renderCode(opt.codeExample ?? '')}
+										<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+									{@html renderCode(opt.codeExample ?? '')}
 									</div>
 								{/if}
 							</div>
@@ -690,9 +688,9 @@
 					<p>{prError}</p>
 					{#if prError.includes('not installed') || prError.includes('GitHub App') || prError.includes('permission') || prError.includes('404') || prError.includes('401') || prError.includes('403')}
 						<p>
-							<a href="/settings" class="underline hover:no-underline font-medium">
-								Go to Settings → install the GitHub App
-							</a>
+						<a href="/settings" class="underline hover:no-underline font-medium">
+							Go to Settings → install the GitHub App
+						</a>
 							on this account or organization to enable write access.
 						</p>
 					{/if}

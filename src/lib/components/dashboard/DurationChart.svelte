@@ -30,11 +30,11 @@
 		</div>
 	{:else}
 		<div class="space-y-3">
-			{#each sorted as m}
+			{#each sorted as m (m.workflowId)}
 				<div class="space-y-1">
 					<div class="flex items-center justify-between text-xs">
 						<a
-							href="/dashboard/workflow/{m.workflowId}?owner={encodeURIComponent(owner)}&repo={encodeURIComponent(repo)}"
+							href={`/dashboard/workflow/${m.workflowId}?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}`}
 							class="text-foreground font-medium truncate max-w-48 hover:text-primary hover:underline transition-colors"
 							title={m.workflowName}
 						>

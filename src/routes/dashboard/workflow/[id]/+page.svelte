@@ -19,9 +19,9 @@
 	// Estimated minutes "saved" by skips (median run duration × skipped count)
 	const medianDurationMs = $derived(
 		detailData.durationTrend.length > 0
-			? [...detailData.durationTrend]
-					.sort((a, b) => a.durationMs - b.durationMs)
-					[Math.floor(detailData.durationTrend.length / 2)]?.durationMs ?? 0
+			? [...detailData.durationTrend].sort((a, b) => a.durationMs - b.durationMs)[
+					Math.floor(detailData.durationTrend.length / 2)
+				]?.durationMs ?? 0
 			: 0
 	);
 	const minutesSavedBySkips = $derived(
@@ -247,12 +247,12 @@
 					</p>
 				</div>
 				<div class="space-y-3">
-					{#each detailData.stepBreakdown as step}
-						<div class="space-y-1">
-							<div class="flex items-center justify-between text-xs">
-								<span class="text-foreground font-medium truncate max-w-52" title={step.stepName}>
-									{step.stepName}
-								</span>
+						{#each detailData.stepBreakdown as step (step.stepName)}
+							<div class="space-y-1">
+								<div class="flex items-center justify-between text-xs">
+									<span class="text-foreground font-medium truncate max-w-52" title={step.stepName}>
+										{step.stepName}
+									</span>
 								<span class="text-muted-foreground ml-2 flex-shrink-0 tabular-nums">
 									{formatDuration(step.avgDurationMs)} avg
 								</span>

@@ -16,9 +16,9 @@
 		</div>
 	{:else}
 		<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-			{#each metrics as m}
+			{#each metrics as m (m.workflowId)}
 				<a
-					href="/dashboard/workflow/{m.workflowId}?owner={owner}&repo={repo}"
+					href={`/dashboard/workflow/${m.workflowId}?owner=${owner}&repo=${repo}`}
 					class="bg-card border border-border rounded-xl p-4 flex flex-col gap-3 hover:bg-muted/30 transition-colors h-full"
 				>
 					<div class="flex items-start gap-3">

@@ -44,7 +44,7 @@
 				</linearGradient>
 			</defs>
 			<!-- Grid lines + y-axis labels -->
-			{#each [0, 0.25, 0.5, 0.75, 1] as pct}
+			{#each [0, 0.25, 0.5, 0.75, 1] as pct (pct)}
 				<line
 					x1={padding.left}
 					y1={padding.top + chartHeight * (1 - pct)}
@@ -83,7 +83,7 @@
 			/>
 
 			<!-- Data points colored by conclusion -->
-			{#each completed as d, i}
+			{#each completed as d, i (d.startedAt)}
 				<circle
 					cx={x(i)}
 					cy={y(d.durationMs)}

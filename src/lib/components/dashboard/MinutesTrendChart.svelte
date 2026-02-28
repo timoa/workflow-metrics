@@ -90,7 +90,7 @@
 				role="img"
 				aria-label={title}
 			>
-				{#each data as point, i}
+				{#each data as point, i (point.date)}
 					<!-- svelte-ignore a11y_no_static_element_interactions -->
 					<div
 						class="flex-1 flex flex-col justify-end cursor-pointer"
@@ -110,7 +110,7 @@
 
 			<!-- X-axis labels -->
 			<div class="flex w-full mt-1.5" aria-hidden="true">
-				{#each data as point, i}
+				{#each data as point, i (point.date)}
 					<div class="flex-1 flex justify-center">
 						{#if showLabel(i, data.length)}
 							<span class="text-[10px] text-muted-foreground whitespace-nowrap">

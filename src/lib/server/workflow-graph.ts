@@ -98,7 +98,7 @@ export function buildJobGraphFromWorkflow(content: string): {
 	const nodes: WorkflowJobNode[] = [];
 	const edges: WorkflowJobEdge[] = [];
 
-	for (const [id, job] of Object.entries(jobs)) {
+	for (const id of Object.keys(jobs)) {
 		const needs = needsMap.get(id) ?? [];
 		for (const n of needs) {
 			if (!jobs[n]) continue;

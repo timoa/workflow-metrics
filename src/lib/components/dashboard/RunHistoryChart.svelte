@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { RunDataPoint, WorkflowFileCommit } from '$lib/types/metrics';
+	import { SvelteMap } from 'svelte/reactivity';
 
 	let { data, commits = [] }: { data: RunDataPoint[]; commits?: WorkflowFileCommit[] } = $props();
 
@@ -74,9 +75,9 @@
 		if (!commits.length || !data.length) return [];
 		const minDate = data[0].date;
 		const maxDate = data[data.length - 1].date;
-		const dateToIndex = new Map<string, number>();
+		const dateToIndex = new SvelteMap<string, number>();
 		data.forEach((d, i) => dateToIndex.set(d.date, i));
-		const byDate = new Map<string, WorkflowFileCommit[]>();
+		const byDate = new SvelteMap<string, WorkflowFileCommit[]>();
 		for (const c of commits) {
 			if (c.date < minDate || c.date > maxDate) continue;
 			if (!byDate.has(c.date)) byDate.set(c.date, []);
@@ -172,17 +173,17 @@
 					</linearGradient>
 				</defs>
 				<!-- Grid lines -->
-				{#each [0, 0.25, 0.5, 0.75, 1] as pct}
-					<line
-						x1={padding.left}
-						y1={padding.top + chartHeight * (1 - pct)}
-						x2={width - padding.right}
-						y2={padding.top + chartHeight * (1 - pct)}
-						stroke="currentColor"
-						class="text-border"
-						stroke-width="0.5"
-						stroke-dasharray="4 4"
-					/>
+				{#each [0, 0.25, 0.5, 0.75, 1] as pct (pct)}
+				<line
+					x1={padding.left}
+					y1={padding.top + chartHeight * (1 - pct)}
+					x2={width - padding.right}
+					y2={padding.top + chartHeight * (1 - pct)}
+					stroke="currentColor"
+					class="text-border"
+					stroke-width="0.5"
+					stroke-dasharray="4 4"
+				/>
 				{/each}
 
 			<!-- Stacked areas: failure (bottom), skipped band, success band (top) -->
@@ -209,7 +210,7 @@
 			<path d={successPath} fill="none" stroke="var(--color-success)" stroke-width="2" />
 
 				<!-- Commit markers (workflow file changes): dashed vertical line so it’s clearly visible -->
-				{#each commitMarkers as marker}
+				{#each commitMarkers as marker (marker.date)}
 					<line
 						x1={marker.x}
 						y1={padding.top}
@@ -237,18 +238,18 @@
 					/>
 				{/if}
 
-				<!-- X-axis labels -->
-				{#each xLabels as label}
-					<text
-						x={label.x}
-						y={height - 4}
-						text-anchor="middle"
-						font-size="9"
-						class="fill-muted-foreground"
-					>
-						{label.date}
-					</text>
-				{/each}
+			<!-- X-axis labels -->
+			{#each xLabels as label (label.date)}
+				<text
+					x={label.x}
+					y={height - 4}
+					text-anchor="middle"
+					font-size="9"
+					class="fill-muted-foreground"
+				>
+					{label.date}
+				</text>
+			{/each}
 			</svg>
 
 			<!-- Tooltip (horizontal position matches SVG viewBox so it stays aligned) -->
@@ -288,7 +289,7 @@
 						{#if hoveredMarker}
 							<div class="col-span-2 border-t border-border pt-1 mt-0.5 space-y-1">
 								<span class="text-primary font-medium">Workflow file changes</span>
-								{#each hoveredMarker.commits as commit}
+								{#each hoveredMarker.commits as commit (commit.sha)}
 									<div class="text-muted-foreground">
 										<span class="font-mono text-foreground">{commit.sha}</span>
 										{commit.message ? ` — ${commit.message}` : ''}

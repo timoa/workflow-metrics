@@ -18,7 +18,7 @@
 		</div>
 	{:else}
 		<div class="space-y-3">
-			{#each sorted as job}
+			{#each sorted as job (job.jobName)}
 				<div class="space-y-1">
 					<div class="flex items-center justify-between text-xs">
 						<span class="text-foreground font-medium truncate max-w-48" title={job.jobName}>

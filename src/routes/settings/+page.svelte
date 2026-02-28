@@ -39,7 +39,7 @@
 			<p class="text-xs text-muted-foreground mt-0.5">Connected GitHub accounts</p>
 		</div>
 		<div class="divide-y divide-border">
-			{#each data.connections as conn}
+			{#each data.connections as conn (conn.id)}
 				<div class="flex items-center gap-4 px-5 py-4">
 					<div class="size-9 rounded-full bg-secondary flex items-center justify-center overflow-hidden flex-shrink-0">
 						{#if conn.avatar_url}
@@ -109,7 +109,7 @@
 			</div>
 		</div>
 		<div class="divide-y divide-border">
-			{#each data.repos as repo}
+			{#each data.repos as repo (repo.id)}
 				<div class="flex items-center gap-4 px-5 py-3">
 					<div class="flex-1 min-w-0 flex flex-wrap items-center gap-2">
 						<p class="text-sm font-medium text-foreground truncate">{repo.full_name}</p>
@@ -196,7 +196,7 @@
 			<!-- List of existing installations -->
 			{#if data.installations.length > 0}
 				<div class="space-y-2">
-					{#each data.installations as inst}
+					{#each data.installations as inst (inst.id)}
 							<div class="flex items-center justify-between rounded-lg border border-green-500/20 bg-green-500/5 px-3 py-2">
 							<div class="flex items-center gap-3 min-w-0">
 								{#if inst.account_avatar_url}
@@ -225,16 +225,16 @@
 									</p>
 								</div>
 							</div>
-							<a
-								href={inst.account_type === 'Organization'
-									? `https://github.com/organizations/${encodeURIComponent(inst.account_login)}/settings/installations`
-									: 'https://github.com/settings/installations'}
-								target="_blank"
-								rel="noopener noreferrer"
-								class="shrink-0 text-xs text-muted-foreground hover:text-destructive transition-colors ml-4"
-							>
-								Uninstall on GitHub
-							</a>
+						<a
+						href={inst.account_type === 'Organization'
+							? `https://github.com/organizations/${encodeURIComponent(inst.account_login)}/settings/installations`
+							: 'https://github.com/settings/installations'}
+							target="_blank"
+							rel="noopener noreferrer"
+							class="shrink-0 text-xs text-muted-foreground hover:text-destructive transition-colors ml-4"
+						>
+							Uninstall on GitHub
+						</a>
 						</div>
 					{/each}
 				</div>
@@ -435,9 +435,9 @@
 						bind:value={defaultRepoId}
 						class="bg-background border border-input rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
 					>
-						{#each data.repos.filter((r) => r.is_active) as repo}
-							<option value={repo.id}>{repo.full_name}</option>
-						{/each}
+					{#each data.repos.filter((r) => r.is_active) as repo (repo.id)}
+						<option value={repo.id}>{repo.full_name}</option>
+					{/each}
 					</select>
 				</div>
 			{/if}

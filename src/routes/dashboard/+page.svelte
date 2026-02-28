@@ -276,9 +276,9 @@
 					onchange={(e) => switchRepo((e.target as HTMLSelectElement).value)}
 					class="text-sm bg-card border border-border rounded-lg pl-3 pr-10 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-ring appearance-none cursor-pointer min-w-[12rem]"
 				>
-					{#each data.repos as repo}
-						<option value={repo.full_name}>{repo.full_name}</option>
-					{/each}
+						{#each data.repos as repo (repo.full_name)}
+							<option value={repo.full_name}>{repo.full_name}</option>
+						{/each}
 				</select>
 				<span
 					class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
@@ -302,7 +302,7 @@
 	{:else if initialLoading || !dashboardData}
 		<!-- Loading skeleton -->
 		<div class="flex flex-wrap gap-4">
-			{#each [1, 2, 3, 4, 5] as _}
+			{#each [1, 2, 3, 4, 5] as i (i)}
 				<div class="h-24 min-w-[140px] flex-1 rounded-lg bg-muted/60 animate-pulse"></div>
 			{/each}
 		</div>
@@ -540,17 +540,17 @@
 							</tr>
 						</thead>
 						<tbody>
-							{#each topSkipped as row}
-								<tr class="border-b border-border/50 hover:bg-muted/30 transition-colors">
-									<td class="px-5 py-2.5">
-										<a
-											href="/dashboard/workflow/{row.workflowId}?owner={encodeURIComponent(dashboardData.owner)}&repo={encodeURIComponent(dashboardData.repo)}"
-											class="text-foreground font-medium truncate max-w-48 block hover:underline"
-											title={row.workflowName}
-										>
-											{row.workflowName}
-										</a>
-									</td>
+						{#each topSkipped as row (row.workflowId)}
+							<tr class="border-b border-border/50 hover:bg-muted/30 transition-colors">
+								<td class="px-5 py-2.5">
+									<a
+										href={`/dashboard/workflow/${row.workflowId}?owner=${encodeURIComponent(dashboardData.owner)}&repo=${encodeURIComponent(dashboardData.repo)}`}
+										class="text-foreground font-medium truncate max-w-48 block hover:underline"
+										title={row.workflowName}
+									>
+										{row.workflowName}
+									</a>
+								</td>
 									<td class="px-4 py-2.5 text-right text-muted-foreground tabular-nums">
 										{row.skipRate.toFixed(1)}%
 									</td>
@@ -687,11 +687,11 @@
 									</tr>
 								</thead>
 								<tbody>
-									{#each tableRows as row}
-										<tr class="border-b border-border/50 hover:bg-muted/30 transition-colors">
-											<td class="px-5 py-2.5 text-foreground font-medium truncate max-w-48" title={row.workflowName}>
-												{row.workflowName}
-											</td>
+								{#each tableRows as row (row.workflowId)}
+									<tr class="border-b border-border/50 hover:bg-muted/30 transition-colors">
+										<td class="px-5 py-2.5 text-foreground font-medium truncate max-w-48" title={row.workflowName}>
+											{row.workflowName}
+										</td>
 											<td class="px-4 py-2.5 text-right text-muted-foreground tabular-nums">
 												{row.runsPerDay.toFixed(1)}
 											</td>

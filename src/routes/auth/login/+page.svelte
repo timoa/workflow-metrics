@@ -80,7 +80,7 @@
 				{ icon: '📊', label: 'Run analytics' },
 				{ icon: '⚡', label: 'Duration trends' },
 				{ icon: '🤖', label: 'AI optimization' }
-			] as feature}
+			] as feature (feature.label)}
 				<div class="space-y-1">
 					<div class="text-2xl">{feature.icon}</div>
 					<p class="text-xs text-muted-foreground">{feature.label}</p>

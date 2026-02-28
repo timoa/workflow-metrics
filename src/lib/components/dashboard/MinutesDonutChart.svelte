@@ -234,7 +234,7 @@
 						class="text-muted/40"
 					/>
 					<!-- Segments -->
-					{#each donutSegments as seg, i}
+					{#each donutSegments as seg, i (seg.name)}
 						<!-- svelte-ignore a11y_no_static_element_interactions -->
 						<circle
 							cx={CX}
@@ -328,7 +328,7 @@
 
 	<!-- Legend -->
 	<div class="flex-1 min-w-0 space-y-2.5 py-1">
-		{#each donutSegments.slice(0, 8) as seg}
+			{#each donutSegments.slice(0, 8) as seg (seg.name)}
 			{@const isEstimated = seg.runnerDetected !== undefined ? !seg.runnerDetected : billableIsEstimate}
 			<div class="flex items-start gap-2 text-xs min-w-0">
 				<span
