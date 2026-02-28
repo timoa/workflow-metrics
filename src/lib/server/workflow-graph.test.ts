@@ -163,7 +163,7 @@ jobs:
     steps:
       - run: echo d
 `;
-		const { nodes, edges } = buildJobGraphFromWorkflow(workflow);
+		const { nodes } = buildJobGraphFromWorkflow(workflow);
 		expect(nodes).toHaveLength(4);
 
 		const a = nodes.find((n) => n.id === 'a');
@@ -298,7 +298,7 @@ jobs:
 		const dynamic = nodes.find((n) => n.id === 'dynamic');
 		const normal = nodes.find((n) => n.id === 'normal');
 
-		expect(dynamic?.runnerLabel).toBe('\${{ matrix.os }}');
+		expect(dynamic?.runnerLabel).toBe('${{ matrix.os }}');
 		expect(normal?.runnerLabel).toBe('ubuntu-latest');
 	});
 

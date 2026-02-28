@@ -11,7 +11,7 @@ import type { GitHubWorkflowRun } from '$lib/types/github';
 
 // Create a proper mock builder for Supabase chains
 const createMockSupabaseClient = () => {
-	const mockChains: Record<string, any> = {};
+	const mockChains: Record<string, Record<string, unknown>> = {};
 
 	const builder = {
 		from: vi.fn((table: string) => {

@@ -28,8 +28,9 @@ All code changes MUST maintain the following coverage thresholds measured by `pn
 1. **Write tests first** before implementing new features
 2. **Run tests** to confirm they fail (red phase)
 3. **Implement code** to make tests pass (green phase)
-4. **Refactor** while keeping tests green
-5. **Run full coverage report** before committing
+4. **Run `pnpm lint`** to check code style and fix any issues
+5. **Refactor** while keeping tests green and linting clean
+6. **Run full coverage report** before committing
 
 ### Test Update Requirement
 - **Every code change** MUST include corresponding test updates
@@ -152,6 +153,28 @@ const createMockSupabase = () => ({
 });
 ```
 
+## Linting Requirements (MANDATORY)
+
+**You MUST run `pnpm lint` after every code change.**
+
+### Linting Rules
+- All code must pass ESLint before committing
+- No warnings or errors allowed in committed code
+- Fix auto-fixable issues with `pnpm lint --fix`
+- Manual fixes required for non-auto-fixable issues
+
+### Lint Commands
+```bash
+pnpm lint              # Check for lint errors
+pnpm lint --fix        # Auto-fix lint errors where possible
+```
+
+### Pre-Commit Lint Check
+Before committing, verify lint passes:
+```bash
+pnpm lint && echo "✅ Lint passed" || echo "❌ Lint failed - fix errors before committing"
+```
+
 ## Running Tests
 
 ### During Development
@@ -162,12 +185,15 @@ pnpm test:coverage     # Run tests with coverage report
 ```
 
 ### Pre-Commit Checklist
-Before committing any code:
+Before committing any code, you MUST run these commands in order:
+
 ```bash
 pnpm check             # TypeScript + Svelte check
-pnpm lint              # ESLint
+pnpm lint              # ESLint (REQUIRED after every change)
 pnpm test:coverage     # Tests + coverage (must pass thresholds)
 ```
+
+**Linting is mandatory** - No code should be committed with lint errors. Run `pnpm lint` after every change and fix all issues before committing.
 
 ## Coverage Report Analysis
 
