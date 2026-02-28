@@ -80,6 +80,9 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Build application
+        env:
+          PUBLIC_SUPABASE_URL: ${{ vars.PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co' }}
+          PUBLIC_SUPABASE_ANON_KEY: ${{ vars.PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key' }}
         run: pnpm run build
 
       - name: Audit dependencies
