@@ -1,3 +1,10 @@
+## [0.1.7](https://github.com/timoa/workflow-metrics/compare/v0.1.6...v0.1.7) (2026-02-28)
+
+
+### Bug Fixes
+
+* **flowchart:** fix an issue with FlowChart + update README ([2c179dd](https://github.com/timoa/workflow-metrics/commit/2c179dd207b5bfa153a1ec2b3208ba7db670f548))
+
 ## [0.1.6](https://github.com/timoa/workflow-metrics/compare/v0.1.5...v0.1.6) (2026-02-28)
 
 
