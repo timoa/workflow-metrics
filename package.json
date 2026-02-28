@@ -16,7 +16,7 @@
 		"dev": "vite dev",
 		"build": "vite build",
 		"preview": "vite preview",
-		"deploy": "pnpm run build && npx wrangler pages deploy .svelte-kit/cloudflare --project-name=workflow-metrics",
+		"deploy": "pnpm run build && pnpm exec wrangler pages deploy .svelte-kit/cloudflare --project-name=workflow-metrics",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
@@ -68,7 +68,8 @@
 		"typescript": "~5.9.0",
 		"typescript-eslint": "^8.56.1",
 		"vite": "^6.2.6",
-		"vitest": "^3.0.0"
+		"vitest": "^3.0.0",
+		"wrangler": "^4.69.0"
 	},
 	"pnpm": {
 		"auditConfig": {

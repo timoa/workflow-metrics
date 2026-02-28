@@ -69,7 +69,7 @@
 					</tr>
 				</thead>
 				<tbody>
-					{#each paginatedRuns as run (run.runId)}
+					{#each paginatedRuns as run (run.id)}
 						<tr class="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
 							<td class="px-5 py-3">
 								<div class="flex items-center gap-2">
