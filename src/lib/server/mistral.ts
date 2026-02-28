@@ -1,5 +1,5 @@
 import { createMistral } from '@ai-sdk/mistral';
-import { generateObject, generateText } from 'ai';
+import { generateText, Output } from 'ai';
 import { z } from 'zod';
 import type { WorkflowMetrics, OptimizationResult, OptimizationItem } from '$lib/types/metrics';
 
@@ -90,15 +90,15 @@ export async function generateOptimizationReport(
 	const mistral = createMistralClient(apiKey);
 	const prompt = buildOptimizationPrompt(workflowName, workflowYaml, metrics);
 
-	const { object, usage } = await generateObject({
+	const { output, usage } = await generateText({
 		model: mistral('mistral-large-latest'),
-		schema: OptimizationSchema,
+		output: Output.object({ schema: OptimizationSchema }),
 		prompt,
 		maxOutputTokens: 4096
 	});
 
 	return {
-		result: object as OptimizationResult,
+		result: output as OptimizationResult,
 		usage: {
 			promptTokens: usage.inputTokens ?? 0,
 			completionTokens: usage.outputTokens ?? 0

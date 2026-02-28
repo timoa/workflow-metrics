@@ -6,13 +6,15 @@ vi.mock('@ai-sdk/mistral', () => ({
 }));
 
 vi.mock('ai', () => ({
-	generateObject: vi.fn(),
+	Output: {
+		object: vi.fn().mockReturnValue({ __output: true })
+	},
 	generateText: vi.fn()
 }));
 
 // Import after mocks
 import { createMistralClient, buildOptimizationPrompt, generateOptimizationReport, generateOptimizedYaml } from './mistral';
-import { generateObject, generateText } from 'ai';
+import { generateText } from 'ai';
 import type { WorkflowMetrics } from '$lib/types/metrics';
 
 describe('createMistralClient', () => {
@@ -171,8 +173,8 @@ jobs:
 			}
 		};
 
-		vi.mocked(generateObject).mockResolvedValue({
-			object: mockResult,
+		vi.mocked(generateText).mockResolvedValue({
+			output: mockResult,
 			usage: { inputTokens: 1000, outputTokens: 500 }
 		} as never);
 
@@ -188,18 +190,18 @@ jobs:
 		expect(result.usage.completionTokens).toBe(500);
 	});
 
-	it('calls generateObject with correct parameters', async () => {
-		vi.mocked(generateObject).mockResolvedValue({
-			object: { optimizations: [], summary: {} },
+	it('calls generateText with structured output parameters', async () => {
+		vi.mocked(generateText).mockResolvedValue({
+			output: { optimizations: [], summary: {} },
 			usage: { inputTokens: 100, outputTokens: 50 }
 		} as never);
 
 		await generateOptimizationReport('test-api-key', 'CI', mockWorkflowYaml, mockMetrics);
 
-		expect(generateObject).toHaveBeenCalledWith(
+		expect(generateText).toHaveBeenCalledWith(
 			expect.objectContaining({
 				model: expect.anything(),
-				schema: expect.anything(),
+				output: expect.anything(),
 				prompt: expect.stringContaining('Workflow: CI'),
 				maxOutputTokens: 4096
 			})

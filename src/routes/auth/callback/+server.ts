@@ -2,7 +2,7 @@ import { redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 /** Allow only same-origin paths (no protocol-relative or external URLs). */
-function safeNext(next: string | null): string | null {
+function safeNext(next: string | null | undefined): string | null {
 	if (!next || typeof next !== 'string') return null;
 	const trimmed = next.trim();
 	if (trimmed === '' || !trimmed.startsWith('/') || trimmed.startsWith('//')) return null;
