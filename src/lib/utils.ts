@@ -68,11 +68,25 @@ export function successRateColor(rate: number): string {
 	return 'text-red-500';
 }
 
+/** Left border Tailwind class matching successRateColor thresholds. */
+export function successRateBorderColor(rate: number): string {
+	if (rate >= 90) return 'border-l-4 border-l-green-500';
+	if (rate >= 70) return 'border-l-4 border-l-yellow-500';
+	return 'border-l-4 border-l-red-500';
+}
+
 /** Tailwind class for failure rate: green ≤10%, yellow ≤30%, red above. */
 export function failureRateColor(failureRate: number): string {
 	if (failureRate <= 10) return 'text-green-500';
 	if (failureRate <= 30) return 'text-yellow-500';
 	return 'text-red-500';
+}
+
+/** Left border Tailwind class matching failureRateColor thresholds. */
+export function failureRateBorderColor(failureRate: number): string {
+	if (failureRate <= 10) return 'border-l-4 border-l-green-500';
+	if (failureRate <= 30) return 'border-l-4 border-l-yellow-500';
+	return 'border-l-4 border-l-red-500';
 }
 
 export function conclusionColor(conclusion: string | null | undefined): string {

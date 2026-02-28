@@ -4,8 +4,8 @@
 
 	let { data }: { data: DurationDataPoint[] } = $props();
 
-	const width = 500;
-	const height = 180;
+	const width = 1000;
+	const height = 120;
 	const padding = { top: 16, right: 16, bottom: 28, left: 52 };
 	const chartWidth = $derived(width - padding.left - padding.right);
 	const chartHeight = $derived(height - padding.top - padding.bottom);
@@ -36,7 +36,7 @@
 			Not enough data to show trend
 		</div>
 	{:else}
-		<svg viewBox="0 0 {width} {height}" class="w-full" preserveAspectRatio="none">
+		<svg viewBox="0 0 {width} {height}" class="w-full block" preserveAspectRatio="none">
 			<defs>
 				<linearGradient id="duration-trend-fill" x1="0" x2="0" y1="0" y2="1">
 					<stop offset="0%" stop-color="var(--color-primary)" stop-opacity="0.35" />

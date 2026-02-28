@@ -31,10 +31,36 @@
 		billableIsEstimate?: boolean;
 	} = $props();
 
+	// Helper to get display name with fallback
+	function getDisplayName(d: WorkflowMinutesShare | JobMinutesShare): string {
+		if ('jobName' in d) return d.jobName;
+
+		// For workflows, check if name looks like a numeric ID
+		const name = d.workflowName;
+		const isNumericId = /^Workflow\s+\d+$/.test(name);
+
+		if (isNumericId && d.workflowPath) {
+			// Extract filename from path
+			const filename = d.workflowPath.split('/').pop();
+			if (filename) return filename;
+		}
+
+		// Fallback if numeric ID but no path, or if name is empty
+		if (isNumericId || !name) {
+			if (d.workflowPath) {
+				const filename = d.workflowPath.split('/').pop();
+				if (filename) return filename;
+			}
+			return 'Unknown Workflow';
+		}
+
+		return name;
+	}
+
 	// Normalise union type to a common shape
 	const segments = $derived<Segment[]>(
 		(data as Array<WorkflowMinutesShare | JobMinutesShare>).map((d) => ({
-			name: 'workflowName' in d ? d.workflowName : d.jobName,
+			name: getDisplayName(d),
 			minutes: d.minutes,
 			billableMinutes: d.billableMinutes,
 			percentage: d.percentage,

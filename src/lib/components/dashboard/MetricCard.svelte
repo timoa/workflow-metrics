@@ -9,9 +9,11 @@
 		valueClass?: string;
 		/** Optional description shown in a tooltip when hovering/focusing the help icon. */
 		help?: string;
+		/** Optional additional classes for the card container. */
+		class?: string;
 	}
 
-	let { title, value, subtitle, trend, icon, valueClass, help }: Props = $props();
+	let { title, value, subtitle, trend, icon, valueClass, help, class: className = '' }: Props = $props();
 
 	const trendLabel = $derived(
 		trend == null ? null : trend >= 0 ? `+${trend.toFixed(1)}%` : `${trend.toFixed(1)}%`
@@ -19,10 +21,10 @@
 	const trendPositive = $derived(trend != null && trend >= 0);
 </script>
 
-<div class="bg-card border border-border rounded-xl p-5 space-y-3">
+<div class="bg-card border border-border rounded-xl p-5 space-y-3 {className}">
 	<div class="flex items-center justify-between">
 		<div class="flex items-center gap-1.5 min-w-0">
-			<p class="text-sm font-medium text-muted-foreground truncate">{title}</p>
+			<p class="text-sm font-medium text-muted-foreground whitespace-nowrap">{title}</p>
 			{#if help}
 				<span class="group relative inline-flex flex-shrink-0">
 					<button

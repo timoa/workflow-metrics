@@ -9,7 +9,7 @@
 	import MinutesTrendChart from '$lib/components/dashboard/MinutesTrendChart.svelte';
 	import RecentRuns from '$lib/components/dashboard/RecentRuns.svelte';
 	import WorkflowList from '$lib/components/dashboard/WorkflowList.svelte';
-	import { formatDuration, successRateColor, failureRateColor } from '$lib/utils';
+	import { formatDuration, successRateColor, successRateBorderColor, failureRateColor, failureRateBorderColor } from '$lib/utils';
 
 	function formatMinutes(m: number): string {
 		if (m < 60) return `${m}m`;
@@ -301,9 +301,9 @@
 		</div>
 	{:else if initialLoading || !dashboardData}
 		<!-- Loading skeleton -->
-		<div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
+		<div class="flex flex-wrap gap-4">
 			{#each [1, 2, 3, 4, 5] as _}
-				<div class="h-24 rounded-lg bg-muted/60 animate-pulse"></div>
+				<div class="h-24 min-w-[140px] flex-1 rounded-lg bg-muted/60 animate-pulse"></div>
 			{/each}
 		</div>
 		<div class="grid grid-cols-1 lg:grid-cols-5 gap-4">
@@ -378,23 +378,26 @@
 		{/if}
 	{:else}
 		<!-- Metric cards -->
-		<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+		<div class="flex flex-wrap gap-4">
 			<MetricCard
+				class="min-w-[140px] flex-1"
 				title="Total Runs"
 				value={totalRunsLabel}
 				subtitle="last {dashboardData.timeWindowDays} days"
 				help="Total number of workflow runs that were triggered in the last {dashboardData.timeWindowDays} days, including success, failure, and cancelled.{dashboardData.totalRunsIsCapped ? ' GitHub caps filtered results at 1,000 runs, so the real total may be higher.' : ''}"
 				icon='<svg class="size-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>'
 			/>
+		<MetricCard
+			class="min-w-[140px] flex-1 {successRateBorderColor(dashboardData.successRate)}"
+			title="Success Rate"
+			value="{dashboardData.successRate.toFixed(1)}%"
+			subtitle="of runs that executed"
+			valueClass={successRateColor(dashboardData.successRate)}
+			help="Percentage of runs that actually executed (success or failure). Skipped and cancelled runs are excluded so the rate reflects real failures, not condition-not-met skips."
+			icon='<svg class="size-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 5 5L20 7"/></svg>'
+		/>
 			<MetricCard
-				title="Success Rate"
-				value="{dashboardData.successRate.toFixed(1)}%"
-				subtitle="of runs that executed"
-				valueClass={successRateColor(dashboardData.successRate)}
-				help="Percentage of runs that actually executed (success or failure). Skipped and cancelled runs are excluded so the rate reflects real failures, not condition-not-met skips."
-				icon='<svg class="size-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 5 5L20 7"/></svg>'
-			/>
-			<MetricCard
+				class="min-w-[140px] flex-1"
 				title="Avg Duration"
 				value={formatDuration(dashboardData.avgDurationMs)}
 				subtitle="per run"
@@ -402,6 +405,7 @@
 				icon='<svg class="size-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
 			/>
 			<MetricCard
+				class="min-w-[140px] flex-1"
 				title="Build Minutes"
 				value={formatMinutes(dashboardData.totalMinutes30d)}
 				subtitle="{dashboardData.billableIsEstimate ? '~' : ''}{formatMinutes(dashboardData.billableMinutes30d)} billable{dashboardData.billableIsEstimate ? ' (partial est.)' : ''}"
@@ -409,18 +413,12 @@
 				icon='<svg class="size-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
 			/>
 			<MetricCard
+				class="min-w-[140px] flex-1"
 				title="Skip Rate"
 				value="{dashboardData.skipRate.toFixed(1)}%"
 				subtitle="of triggered runs skipped"
 				help="Percentage of workflow runs that were skipped (e.g. condition not met). High skip rates can indicate overly broad triggers or useful conditional logic."
 				icon='<svg class="size-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></svg>'
-			/>
-			<MetricCard
-				title="Total Skipped"
-				value={dashboardData.totalSkipped.toLocaleString()}
-				subtitle="last {dashboardData.timeWindowDays} days"
-				help="Total number of runs that completed with status skipped in the repo. Skipped runs did not execute jobs (e.g. path filters or condition not met)."
-				icon='<svg class="size-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>'
 			/>
 		</div>
 
@@ -459,8 +457,9 @@
 						</span>
 					</span>
 				</div>
-				<div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+				<div class="flex flex-wrap gap-4">
 					<MetricCard
+						class="min-w-[140px] flex-1 border-l-4 border-l-indigo-500"
 						title="Deployment Frequency"
 						value="{dashboardData.dora.deploymentFrequency.perWeek.toFixed(1)} / week"
 						subtitle="successful runs"
@@ -468,6 +467,7 @@
 						icon='<svg class="size-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>'
 					/>
 					<MetricCard
+						class="min-w-[140px] flex-1 border-l-4 border-l-indigo-500"
 						title="Lead Time for Changes"
 						value={formatDuration(dashboardData.dora.leadTimeForChangesMs)}
 						subtitle={dashboardData.dora.leadTimeFromCommit
@@ -476,15 +476,17 @@
 						help="Median time from code commit (or workflow trigger) to run completion. Shorter is better. Shown as commit→end when GitHub provides commit time; otherwise trigger→end."
 						icon='<svg class="size-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>'
 					/>
+				<MetricCard
+					class="min-w-[140px] flex-1 {failureRateBorderColor(dashboardData.dora.changeFailureRate)}"
+					title="Change Failure Rate"
+					value="{dashboardData.dora.changeFailureRate.toFixed(1)}%"
+					subtitle="of completed runs"
+					valueClass={failureRateColor(dashboardData.dora.changeFailureRate)}
+					help="Percentage of completed runs that failed (excluding cancelled/skipped). Lower is better. DORA elite teams typically keep this under 15%."
+					icon='<svg class="size-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6m0-6 6 6"/></svg>'
+				/>
 					<MetricCard
-						title="Change Failure Rate"
-						value="{dashboardData.dora.changeFailureRate.toFixed(1)}%"
-						subtitle="of completed runs"
-						valueClass={failureRateColor(dashboardData.dora.changeFailureRate)}
-						help="Percentage of completed runs that failed (excluding cancelled/skipped). Lower is better. DORA elite teams typically keep this under 15%."
-						icon='<svg class="size-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6m0-6 6 6"/></svg>'
-					/>
-					<MetricCard
+						class="min-w-[140px] flex-1 border-l-4 border-l-indigo-500"
 						title="Mean Time to Recovery"
 						value={formatDuration(dashboardData.dora.meanTimeToRecoveryMs)}
 						subtitle={dashboardData.dora.meanTimeToRecoveryMs != null
@@ -506,7 +508,11 @@
 				/>
 			</div>
 			<div class="lg:col-span-2">
-				<DurationChart metrics={dashboardData.workflowMetrics} />
+				<DurationChart
+					metrics={dashboardData.workflowMetrics}
+					owner={dashboardData.owner}
+					repo={dashboardData.repo}
+				/>
 			</div>
 		</div>
 
@@ -585,6 +591,19 @@
 			<div class="space-y-3">
 				<h2 class="text-sm font-medium text-muted-foreground">Efficiency Insights</h2>
 				<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+					<!-- CFR Alert (shown when > 15%) -->
+					{#if dashboardData.dora && dashboardData.dora.changeFailureRate > 15}
+						<div class="bg-card border border-border rounded-xl p-4 space-y-1 border-l-4 border-l-amber-500">
+							<p class="text-xs text-muted-foreground">Change Failure Rate</p>
+							<p class="text-sm font-semibold text-amber-500">
+								{dashboardData.dora.changeFailureRate.toFixed(1)}%
+							</p>
+							<p class="text-xs text-muted-foreground">
+								Exceeds 15% DORA elite threshold
+							</p>
+						</div>
+					{/if}
+
 					<!-- Most expensive workflow -->
 					{#if dashboardData.minutesByWorkflow.length > 0}
 						{@const top = dashboardData.minutesByWorkflow[0]}
@@ -641,6 +660,17 @@
 
 				<!-- Run frequency × duration table -->
 				{#if dashboardData.workflowMetrics.filter((m) => m.totalRuns > 0).length > 0}
+					{@const tableRows = [...dashboardData.workflowMetrics]
+						.filter((m) => m.totalRuns > 0)
+						.map((m) => {
+							const runsPerDay = m.totalRuns / (dashboardData?.timeWindowDays ?? 30);
+							const avgMins = Math.ceil(m.avgDurationMs / 60_000);
+							const dailyMins = Math.round(runsPerDay * avgMins);
+							return { ...m, runsPerDay, dailyMins };
+						})
+						.sort((a, b) => b.dailyMins - a.dailyMins)
+						.slice(0, 8)}
+					{@const maxDailyMins = Math.max(...tableRows.map((r) => r.dailyMins), 1)}
 					<div class="bg-card border border-border rounded-xl overflow-hidden">
 						<div class="px-5 py-4 border-b border-border">
 							<h3 class="text-sm font-semibold text-foreground">Frequency × Duration</h3>
@@ -657,16 +687,7 @@
 									</tr>
 								</thead>
 								<tbody>
-									{#each [...dashboardData.workflowMetrics]
-										.filter((m) => m.totalRuns > 0)
-										.map((m) => {
-											const runsPerDay = m.totalRuns / (dashboardData?.timeWindowDays ?? 30);
-											const avgMins = Math.ceil(m.avgDurationMs / 60_000);
-											const dailyMins = Math.round(runsPerDay * avgMins);
-											return { ...m, runsPerDay, dailyMins };
-										})
-										.sort((a, b) => b.dailyMins - a.dailyMins)
-										.slice(0, 8) as row}
+									{#each tableRows as row}
 										<tr class="border-b border-border/50 hover:bg-muted/30 transition-colors">
 											<td class="px-5 py-2.5 text-foreground font-medium truncate max-w-48" title={row.workflowName}>
 												{row.workflowName}
@@ -677,8 +698,18 @@
 											<td class="px-4 py-2.5 text-right text-muted-foreground tabular-nums">
 												{formatDuration(row.avgDurationMs)}
 											</td>
-											<td class="px-4 py-2.5 text-right font-medium text-foreground tabular-nums">
-												{row.dailyMins > 0 ? formatMinutes(row.dailyMins) : '<1m'}
+											<td class="px-4 py-2.5">
+												<div class="flex items-center justify-end gap-2">
+													<span class="font-medium text-foreground tabular-nums">
+														{row.dailyMins > 0 ? formatMinutes(row.dailyMins) : '<1m'}
+													</span>
+													<div class="w-16 h-1.5 bg-muted rounded-full overflow-hidden flex-shrink-0">
+														<div
+															class="h-full rounded-full bg-primary/60"
+															style="width: {(row.dailyMins / maxDailyMins) * 100}%"
+														></div>
+													</div>
+												</div>
 											</td>
 										</tr>
 									{/each}

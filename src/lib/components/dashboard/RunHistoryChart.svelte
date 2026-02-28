@@ -23,37 +23,35 @@
 		return padding.top + chartHeight - (val / maxTotal) * chartHeight;
 	}
 
-	// Stacked: success at bottom, then failure, then skipped on top
-	const successPath = $derived(
-		data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${x(i)} ${y(d.success)}`).join(' ')
-	);
+	// Stacked: failure at bottom, skipped in middle, success on top (drawn last)
 	const failurePath = $derived(
-		data
-			.map((d, i) => `${i === 0 ? 'M' : 'L'} ${x(i)} ${y(d.success + d.failure)}`)
-			.join(' ')
+		data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${x(i)} ${y(d.failure)}`).join(' ')
 	);
 	const skippedPath = $derived(
 		data
-			.map((d, i) =>
-				`${i === 0 ? 'M' : 'L'} ${x(i)} ${y(d.success + d.failure + d.skipped)}`
-			)
+			.map((d, i) => `${i === 0 ? 'M' : 'L'} ${x(i)} ${y(d.failure + d.skipped)}`)
 			.join(' ')
 	);
-	// Reversed paths for stacked band fills (failure band = between success and failure line, etc.)
-	const successPathReversed = $derived(
+	const successPath = $derived(
 		data
-			.map((_, i) => {
-				const j = data.length - 1 - i;
-				return `${i === 0 ? 'M' : 'L'} ${x(j)} ${y(data[j].success)}`;
-			})
+			.map((d, i) => `${i === 0 ? 'M' : 'L'} ${x(i)} ${y(d.failure + d.skipped + d.success)}`)
 			.join(' ')
 	);
+	// Reversed paths for stacked band fills — all 'L' so they continue from the forward path
 	const failurePathReversed = $derived(
 		data
 			.map((_, i) => {
 				const j = data.length - 1 - i;
+				return `L ${x(j)} ${y(data[j].failure)}`;
+			})
+			.join(' ')
+	);
+	const skippedPathReversed = $derived(
+		data
+			.map((_, i) => {
+				const j = data.length - 1 - i;
 				const d = data[j];
-				return `${i === 0 ? 'M' : 'L'} ${x(j)} ${y(d.success + d.failure)}`;
+				return `L ${x(j)} ${y(d.failure + d.skipped)}`;
 			})
 			.join(' ')
 	);
@@ -187,27 +185,28 @@
 					/>
 				{/each}
 
-				<!-- Stacked areas: success (bottom), failure band, skipped band (top) -->
-				<path
-					d="{successPath} L {x(data.length - 1)} {y(0)} L {x(0)} {y(0)} Z"
-					fill="url(#run-history-success)"
-				/>
-				<path
-					d="{failurePath} L {successPathReversed} Z"
-					fill="url(#run-history-failure)"
-				/>
-				<path
-					d="{skippedPath} L {failurePathReversed} Z"
-					fill="url(#run-history-skipped)"
-				/>
-				<path d={successPath} fill="none" stroke="var(--color-success)" stroke-width="2" />
-				<path d={failurePath} fill="none" stroke="var(--color-destructive)" stroke-width="2" />
-				<path
-					d={skippedPath}
-					fill="none"
-					stroke="hsl(var(--muted-foreground))"
-					stroke-width="2"
-				/>
+			<!-- Stacked areas: failure (bottom), skipped band, success band (top) -->
+			<path
+				d="{failurePath} L {x(data.length - 1)} {y(0)} L {x(0)} {y(0)} Z"
+				fill="url(#run-history-failure)"
+			/>
+			<path
+				d="{skippedPath} {failurePathReversed} Z"
+				fill="url(#run-history-skipped)"
+			/>
+			<path
+				d="{successPath} {skippedPathReversed} Z"
+				fill="url(#run-history-success)"
+			/>
+			<!-- Lines drawn in stacking order; success last so it renders on top -->
+			<path d={failurePath} fill="none" stroke="var(--color-destructive)" stroke-width="2" />
+			<path
+				d={skippedPath}
+				fill="none"
+				stroke="hsl(var(--muted-foreground))"
+				stroke-width="2"
+			/>
+			<path d={successPath} fill="none" stroke="var(--color-success)" stroke-width="2" />
 
 				<!-- Commit markers (workflow file changes): dashed vertical line so it’s clearly visible -->
 				{#each commitMarkers as marker}

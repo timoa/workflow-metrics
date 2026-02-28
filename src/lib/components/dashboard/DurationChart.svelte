@@ -2,7 +2,15 @@
 	import type { WorkflowMetrics } from '$lib/types/metrics';
 	import { formatDuration } from '$lib/utils';
 
-	let { metrics }: { metrics: WorkflowMetrics[] } = $props();
+	let {
+		metrics,
+		owner,
+		repo
+	}: {
+		metrics: WorkflowMetrics[];
+		owner: string;
+		repo: string;
+	} = $props();
 
 	const sorted = $derived(
 		[...metrics]
@@ -25,9 +33,13 @@
 			{#each sorted as m}
 				<div class="space-y-1">
 					<div class="flex items-center justify-between text-xs">
-						<span class="text-foreground font-medium truncate max-w-48" title={m.workflowName}>
+						<a
+							href="/dashboard/workflow/{m.workflowId}?owner={encodeURIComponent(owner)}&repo={encodeURIComponent(repo)}"
+							class="text-foreground font-medium truncate max-w-48 hover:text-primary hover:underline transition-colors"
+							title={m.workflowName}
+						>
 							{m.workflowName}
-						</span>
+						</a>
 						<span class="text-muted-foreground ml-2 flex-shrink-0">
 							{formatDuration(m.avgDurationMs)}
 						</span>

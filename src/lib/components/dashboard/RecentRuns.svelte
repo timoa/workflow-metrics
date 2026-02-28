@@ -109,8 +109,11 @@
 									</span>
 								</span>
 							</td>
-							<td class="px-5 py-3">
-								<span class="text-xs bg-secondary text-secondary-foreground rounded px-1.5 py-0.5 font-mono">
+							<td class="px-5 py-3 max-w-[200px]">
+								<span
+									class="text-xs bg-secondary text-secondary-foreground rounded px-1.5 py-0.5 font-mono truncate inline-block max-w-full"
+									title={run.branch ?? '—'}
+								>
 									{run.branch ?? '—'}
 								</span>
 							</td>

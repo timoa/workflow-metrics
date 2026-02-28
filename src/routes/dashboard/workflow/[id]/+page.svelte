@@ -7,7 +7,8 @@
 	import MinutesDonutChart from '$lib/components/dashboard/MinutesDonutChart.svelte';
 	import MinutesTrendChart from '$lib/components/dashboard/MinutesTrendChart.svelte';
 	import OptimizePanel from '$lib/components/dashboard/OptimizePanel.svelte';
-	import { formatDuration, failureRateColor, successRateColor } from '$lib/utils';
+	import WorkflowJobGraph from '$lib/components/dashboard/WorkflowJobGraph.svelte';
+	import { formatDuration, failureRateColor, failureRateBorderColor, successRateColor, successRateBorderColor } from '$lib/utils';
 
 	let { data }: { data: PageData } = $props();
 	let { detailData, owner, repo, hasMistralKey } = $derived(data);
@@ -85,8 +86,9 @@
 	{/if}
 
 	<!-- Metric cards -->
-	<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+	<div class="flex flex-wrap gap-4">
 		<MetricCard
+			class="min-w-[140px] flex-1 {metrics.totalRuns === 0 ? '' : successRateBorderColor(metrics.successRate)}"
 			title="Success Rate"
 			value={metrics.totalRuns === 0 ? 'N/A' : `${metrics.successRate.toFixed(1)}%`}
 			subtitle={metrics.successCount + metrics.failureCount > 0
@@ -98,68 +100,61 @@
 			help="Percentage of runs that actually executed (success or failure). Skipped and cancelled runs are excluded."
 		/>
 		<MetricCard
+			class="min-w-[140px] flex-1"
 			title="Avg Duration"
 			value={formatDuration(metrics.avgDurationMs)}
 			subtitle="P95: {formatDuration(metrics.p95DurationMs)}"
 		/>
 		<MetricCard
+			class="min-w-[140px] flex-1"
 			title="Total Runs"
 			value={metrics.totalRuns.toLocaleString()}
 			subtitle="last 30 days"
 		/>
 		<MetricCard
+			class="min-w-[140px] flex-1 {failureRateBorderColor(metrics.failureRate)}"
 			title="Failures"
 			value={metrics.failureCount.toLocaleString()}
-			subtitle="{metrics.skippedCount > 0
+			subtitle={metrics.skippedCount > 0
 				? `${metrics.failureRate.toFixed(1)}% failure rate · ${metrics.skippedCount.toLocaleString()} skipped`
-				: `${metrics.failureRate.toFixed(1)}% failure rate`}"
+				: `${metrics.failureRate.toFixed(1)}% failure rate`}
 			valueClass={failureRateColor(metrics.failureRate)}
 			help="Runs that ended in failure. Skipped runs (e.g. condition not met) are not counted as failures."
 		/>
 		<MetricCard
+			class="min-w-[140px] flex-1"
 			title="Build Minutes"
 			value={formatMinutes(detailData.totalMinutes30d)}
-			subtitle="{formatMinutes(detailData.billableMinutes30d)} billable{detailData.billableMinutes30d !== detailData.totalMinutes30d ? ' (mixed runners)' : ' (Linux ×1)'}"
+			subtitle={`${formatMinutes(detailData.billableMinutes30d)} billable${
+				detailData.billableMinutes30d !== detailData.totalMinutes30d ? ' (mixed runners)' : ' (Linux ×1)'
+			}`}
 			help="Raw minutes consumed in the last 30 days. Billable minutes are estimated by applying the runner OS multiplier (Linux ×1, Windows ×2, macOS ×10) from the last 5 sampled runs."
 			icon='<svg class="size-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
 		/>
 		<MetricCard
+			class="min-w-[140px] flex-1"
 			title="Skip Rate"
-			value="{metrics.skipRate.toFixed(1)}%"
-			subtitle="{metrics.skippedCount.toLocaleString()} skipped"
+			value={`${metrics.skipRate.toFixed(1)}%`}
+			subtitle={`${metrics.skippedCount.toLocaleString()} skipped`}
 			help="Percentage of triggered runs that were skipped (e.g. condition not met). High skip rate can mean useful conditional logic or overly broad triggers."
 			icon='<svg class="size-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></svg>'
 		/>
 	</div>
 
-	<!-- Duration charts -->
-	<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-		<DurationTrendChart data={detailData.durationTrend} />
-		<JobBreakdownChart jobs={detailData.jobBreakdown} />
-	</div>
+	<!-- Workflow Structure - Full Width -->
+	{#if detailData.jobGraphNodes.length > 0}
+		<WorkflowJobGraph nodes={detailData.jobGraphNodes} edges={detailData.jobGraphEdges} />
+	{/if}
 
-	<!-- Minutes charts -->
+	<!-- Duration Trend - Full Width -->
+	<DurationTrendChart data={detailData.durationTrend} />
+
+	<!-- Job Breakdown + Cost Efficiency - Half Width Pair -->
 	{#if detailData.totalMinutes30d > 0}
 		<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-			<MinutesDonutChart
-				data={detailData.minutesByJob}
-				title="Minutes by Job"
-				subtitle="Based on last 5 completed runs"
-				totalMinutes={detailData.minutesByJob.reduce((s, j) => s + j.minutes, 0)}
-				totalBillableMinutes={detailData.minutesByJob.reduce((s, j) => s + j.billableMinutes, 0)}
-				totalLabel="sampled"
-				billableIsEstimate={false}
-			/>
-			<MinutesTrendChart
-				data={detailData.minutesTrend}
-				title="Daily Build Minutes"
-				subtitle="Raw minutes consumed per day for this workflow"
-			/>
-		</div>
+			<JobBreakdownChart jobs={detailData.jobBreakdown} />
 
-		<!-- Failure cost + step breakdown -->
-		<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-			<!-- Failure cost card -->
+			<!-- Failure cost card (Cost Efficiency) -->
 			<div class="bg-card border border-border rounded-xl p-5 space-y-4">
 				<div>
 					<h3 class="text-sm font-semibold text-foreground">Cost Efficiency</h3>
@@ -221,40 +216,58 @@
 					</div>
 				</div>
 			</div>
-
-			<!-- Step breakdown for slowest job -->
-			{#if detailData.stepBreakdown.length > 0 && detailData.slowestJobName}
-				{@const maxStepMs = Math.max(...detailData.stepBreakdown.map((s) => s.avgDurationMs), 1)}
-				<div class="bg-card border border-border rounded-xl p-5 space-y-4">
-					<div>
-						<h3 class="text-sm font-semibold text-foreground">Step Breakdown</h3>
-						<p class="text-xs text-muted-foreground mt-0.5">
-							Slowest job: <span class="font-mono">{detailData.slowestJobName}</span> · based on last 5 runs
-						</p>
-					</div>
-					<div class="space-y-3">
-						{#each detailData.stepBreakdown as step}
-							<div class="space-y-1">
-								<div class="flex items-center justify-between text-xs">
-									<span class="text-foreground font-medium truncate max-w-52" title={step.stepName}>
-										{step.stepName}
-									</span>
-									<span class="text-muted-foreground ml-2 flex-shrink-0 tabular-nums">
-										{formatDuration(step.avgDurationMs)} avg
-									</span>
-								</div>
-								<div class="h-2 bg-muted rounded-full overflow-hidden">
-									<div
-										class="h-full rounded-full bg-primary transition-all"
-										style="width: {(step.avgDurationMs / maxStepMs) * 100}%"
-									></div>
-								</div>
-							</div>
-						{/each}
-					</div>
-				</div>
-			{/if}
 		</div>
+
+		<!-- Minutes by Job + Daily Build Minutes - Half Width Pair -->
+		<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+			<MinutesDonutChart
+				data={detailData.minutesByJob}
+				title="Minutes by Job"
+				subtitle="Based on last 5 completed runs"
+				totalMinutes={detailData.minutesByJob.reduce((s, j) => s + j.minutes, 0)}
+				totalBillableMinutes={detailData.minutesByJob.reduce((s, j) => s + j.billableMinutes, 0)}
+				totalLabel="sampled"
+				billableIsEstimate={false}
+			/>
+			<MinutesTrendChart
+				data={detailData.minutesTrend}
+				title="Daily Build Minutes"
+				subtitle="Raw minutes consumed per day for this workflow"
+			/>
+		</div>
+
+		<!-- Step breakdown for slowest job - Half Width (paired if present) -->
+		{#if detailData.stepBreakdown.length > 0 && detailData.slowestJobName}
+			{@const maxStepMs = Math.max(...detailData.stepBreakdown.map((s) => s.avgDurationMs), 1)}
+			<div class="bg-card border border-border rounded-xl p-5 space-y-4 lg:max-w-[50%] lg:min-w-[50%]">
+				<div>
+					<h3 class="text-sm font-semibold text-foreground">Step Breakdown</h3>
+					<p class="text-xs text-muted-foreground mt-0.5">
+						Slowest job: <span class="font-mono">{detailData.slowestJobName}</span> · based on last 5 runs
+					</p>
+				</div>
+				<div class="space-y-3">
+					{#each detailData.stepBreakdown as step}
+						<div class="space-y-1">
+							<div class="flex items-center justify-between text-xs">
+								<span class="text-foreground font-medium truncate max-w-52" title={step.stepName}>
+									{step.stepName}
+								</span>
+								<span class="text-muted-foreground ml-2 flex-shrink-0 tabular-nums">
+									{formatDuration(step.avgDurationMs)} avg
+								</span>
+							</div>
+							<div class="h-2 bg-muted rounded-full overflow-hidden">
+								<div
+									class="h-full rounded-full bg-primary transition-all"
+									style="width: {(step.avgDurationMs / maxStepMs) * 100}%"
+								></div>
+							</div>
+						</div>
+					{/each}
+				</div>
+			</div>
+		{/if}
 	{/if}
 
 	<!-- Recent runs -->

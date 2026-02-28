@@ -23,8 +23,11 @@ import type {
 	WorkflowMinutesShare,
 	JobMinutesShare,
 	StepBreakdown,
-	RunnerType
+	RunnerType,
+	WorkflowJobNode,
+	WorkflowJobEdge
 } from '$lib/types/metrics';
+import { buildJobGraphFromWorkflow } from '$lib/server/workflow-graph';
 
 export function createOctokit(accessToken: string): Octokit {
 	return new Octokit({ auth: accessToken });
@@ -936,6 +939,137 @@ export async function buildWorkflowDetailData(
 
 	const minutesMetrics = computeMinutesDetail(runs, jobsPerRun, jobBreakdown);
 
+	let jobGraphNodes: WorkflowJobNode[] = [];
+	let jobGraphEdges: WorkflowJobEdge[] = [];
+
+	const workflowContent = await fetchWorkflowContent(octokit, owner, repo, workflow.path);
+	const durationByJob = new Map<string, JobBreakdown>();
+	for (const jb of jobBreakdown) {
+		durationByJob.set(jb.jobName, jb);
+	}
+
+	const minutesByJobMap = new Map<string, JobMinutesShare>();
+	for (const m of minutesMetrics.minutesByJob) {
+		minutesByJobMap.set(m.jobName, m);
+	}
+
+	const successStats = new Map<
+		string,
+		{
+			success: number;
+			total: number;
+		}
+	>();
+
+	for (const jobs of jobsPerRun) {
+		for (const job of jobs) {
+			if (job.conclusion === null) continue;
+			const name = job.name;
+			const current = successStats.get(name) ?? { success: 0, total: 0 };
+			if (job.conclusion === 'success') {
+				current.success += 1;
+			}
+			current.total += 1;
+			successStats.set(name, current);
+		}
+	}
+
+	if (workflowContent) {
+		const baseGraph = buildJobGraphFromWorkflow(workflowContent);
+
+		if (baseGraph.nodes.length > 0) {
+			jobGraphNodes = baseGraph.nodes.map((node) => {
+				const durations = durationByJob.get(node.jobName);
+				const minutes = minutesByJobMap.get(node.jobName);
+				const success = successStats.get(node.jobName);
+				const runCount = success?.total ?? durations?.samples ?? 0;
+				const successRate =
+					success && success.total > 0
+						? Math.round((success.success / success.total) * 1000) / 10
+						: 0;
+				const minutesShare = minutes?.percentage ?? 0;
+
+				return {
+					...node,
+					avgDurationMs: durations?.avgDurationMs ?? 0,
+					minDurationMs: durations?.minDurationMs ?? 0,
+					maxDurationMs: durations?.maxDurationMs ?? 0,
+					runCount,
+					successRate,
+					minutesShare
+				};
+			});
+
+			jobGraphEdges = baseGraph.edges;
+		}
+	}
+
+	// Fallback: if we couldn't build a graph from the workflow file, at least
+	// surface one node per job based on minutes/metrics (no dependencies).
+	if (jobGraphNodes.length === 0 && minutesMetrics.minutesByJob.length > 0) {
+		jobGraphNodes = minutesMetrics.minutesByJob.map((m, index) => {
+			const durations = durationByJob.get(m.jobName);
+			const success = successStats.get(m.jobName);
+			const runCount = success?.total ?? durations?.samples ?? 0;
+			const successRate =
+				success && success.total > 0
+					? Math.round((success.success / success.total) * 1000) / 10
+					: 0;
+
+			return {
+				id: m.jobName,
+				jobName: m.jobName,
+				runnerLabel: '',
+				stepCount: 0,
+				avgDurationMs: durations?.avgDurationMs ?? 0,
+				minDurationMs: durations?.minDurationMs ?? 0,
+				maxDurationMs: durations?.maxDurationMs ?? 0,
+				runCount,
+				successRate,
+				minutesShare: m.percentage,
+				columnIndex: index, // Horizontal: each job in its own column
+				rowIndex: 0
+			};
+		});
+		jobGraphEdges = [];
+	}
+
+	// Final fallback: if we still have no nodes but we do have a job breakdown,
+	// surface one node per job using duration metrics only (no dependencies).
+	if (jobGraphNodes.length === 0 && jobBreakdown.length > 0) {
+		const minutesByJobMapForFallback = new Map<string, JobMinutesShare>();
+		for (const m of minutesMetrics.minutesByJob) {
+			minutesByJobMapForFallback.set(m.jobName, m);
+		}
+
+		jobGraphNodes = jobBreakdown.map((jb, index) => {
+			const minutes = minutesByJobMapForFallback.get(jb.jobName);
+			const success = successStats.get(jb.jobName);
+			const runCount = success?.total ?? jb.samples ?? 0;
+			const successRate =
+				success && success.total > 0
+					? Math.round((success.success / success.total) * 1000) / 10
+					: 0;
+
+			return {
+				id: jb.jobName,
+				jobName: jb.jobName,
+				runnerLabel: '',
+				stepCount: 0,
+				avgDurationMs: jb.avgDurationMs,
+				minDurationMs: jb.minDurationMs,
+				maxDurationMs: jb.maxDurationMs,
+				runCount,
+				successRate,
+				minutesShare: minutes?.percentage ?? 0,
+				columnIndex: index, // Horizontal: each job in its own column
+				rowIndex: 0
+			};
+		});
+
+		jobGraphEdges = [];
+	}
+
 	return {
 		workflowId,
 		workflowName: workflow.name,
@@ -945,6 +1079,8 @@ export async function buildWorkflowDetailData(
 		runHistory: buildRunTrend(runs),
 		jobBreakdown,
 		recentRuns: runsToRecentRuns(runs, workflows).slice(0, 100),
-		...minutesMetrics
+		...minutesMetrics,
+		jobGraphNodes,
+		jobGraphEdges
 	};
 }

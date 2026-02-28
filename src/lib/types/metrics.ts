@@ -84,6 +84,8 @@ export type RunnerType = 'ubuntu' | 'windows' | 'macos' | 'mixed' | 'unknown';
 
 export interface WorkflowMinutesShare {
 	workflowName: string;
+	/** Workflow file path (e.g., '.github/workflows/ci.yml') for fallback display. */
+	workflowPath?: string;
 	/** Total raw minutes across all runs in the window. */
 	minutes: number;
 	/** Billable minutes (raw × OS multiplier). Equals raw when runner OS is unknown. */
@@ -187,6 +189,43 @@ export interface WorkflowDetailData {
 	stepBreakdown: StepBreakdown[];
 	/** Name of the slowest job used for step breakdown. */
 	slowestJobName: string | null;
+	/** Graph nodes representing jobs in this workflow, with structural and metric data. */
+	jobGraphNodes: WorkflowJobNode[];
+	/** Directed edges between jobs based on `needs` dependencies. */
+	jobGraphEdges: WorkflowJobEdge[];
+}
+
+export interface WorkflowJobNode {
+	/** Stable identifier, typically the GitHub job name or job key from the workflow file. */
+	id: string;
+	/** Human-readable job label shown on the node. */
+	jobName: string;
+	/** Flattened runner label, e.g. 'ubuntu-latest', 'windows-latest'. */
+	runnerLabel: string;
+	/** Number of steps defined for this job. */
+	stepCount: number;
+	/** Average duration over sampled runs in milliseconds. */
+	avgDurationMs: number;
+	/** Minimum observed duration over sampled runs in milliseconds. */
+	minDurationMs: number;
+	/** Maximum observed duration over sampled runs in milliseconds. */
+	maxDurationMs: number;
+	/** Number of completed job executions sampled. */
+	runCount: number;
+	/** Percentage of completed job executions that succeeded (0–100). */
+	successRate: number;
+	/** Percentage share of total sampled minutes for this workflow (0–100). */
+	minutesShare: number;
+	/** Zero-based column index in the logical DAG layout (0 = earliest jobs). */
+	columnIndex: number;
+	/** Zero-based row index within its column. */
+	rowIndex: number;
+}
+
+export interface WorkflowJobEdge {
+	id: string;
+	source: string;
+	target: string;
 }
 
 export type OptimizationCategory = 'performance' | 'cost' | 'reliability' | 'security' | 'maintenance';
