@@ -1,87 +1,256 @@
 ---
-description: Testing standards – unit tests with Vitest, integration patterns
-globs: src/**/*.test.ts,src/**/*.spec.ts,src/**/*.test.svelte.ts
-alwaysApply: false
+description: Testing standards – Vitest, code coverage requirements (80%+), TDD practices
+globs: src/**/*.test.ts,src/**/*.spec.ts,src/**/*.test.svelte.ts,vitest.config.ts
+alwaysApply: true
 ---
 
-# Testing
+# Testing Standards
 
-## Stack
+## Coverage Requirements (MANDATORY)
 
-- **Unit tests**: Vitest (`pnpm test` / `pnpm test:run`)
-- **Component tests**: `@testing-library/svelte` + `@testing-library/jest-dom`
-- **No E2E framework yet**: add Playwright when UI stabilises
+All code changes MUST maintain the following coverage thresholds measured by `pnpm test:coverage`:
 
-## File Location
+| Metric | Threshold | Current |
+|--------|-----------|---------|
+| Lines | **>= 80%** | 88.56% |
+| Functions | **>= 80%** | 98.21% |
+| Statements | **>= 80%** | 88.56% |
+| Branches | **>= 70%** | 74.45% |
 
-Co-locate tests next to the module they test:
+### Coverage Enforcement
+- **CI will fail** if coverage drops below thresholds
+- CodeCov reports are uploaded automatically on PRs and releases
+- Reviewers must verify coverage report before approving PRs
+
+## Test-Driven Development (TDD)
+
+### Required Workflow
+1. **Write tests first** before implementing new features
+2. **Run tests** to confirm they fail (red phase)
+3. **Implement code** to make tests pass (green phase)
+4. **Refactor** while keeping tests green
+5. **Run full coverage report** before committing
+
+### Test Update Requirement
+- **Every code change** MUST include corresponding test updates
+- Bug fixes require a failing test that reproduces the bug
+- Refactoring requires existing tests to pass without modification
+- New features require comprehensive test coverage
+
+## Test File Location
+
+Co-locate tests next to the module they test (adjacent file pattern):
+
 ```
 src/lib/utils.ts
-src/lib/utils.test.ts
+src/lib/utils.test.ts          # <-- Test file
 
 src/lib/server/github.ts
-src/lib/server/github.test.ts
+src/lib/server/github.test.ts   # <-- Test file
 ```
 
-## What to Test
+## Test Naming Conventions
 
-### Always test (critical paths)
-- `src/lib/utils.ts` – `computeDurationMs`, `percentile`, `cn()`, date formatters
-- `src/lib/server/github.ts` – metric computation (`computeWorkflowMetrics`, `buildRunTrend`), data mappers
-- `/api/optimize` – auth guard (unauthenticated → 401, missing API key → 400)
-- Auth callback – token exchange and DB write logic
+### File Names
+- Unit tests: `{module}.test.ts`
+- Server tests: `{module}.test.ts` in `src/lib/server/`
+- Group related tests in `describe()` blocks
 
-### Test with mocks
-- Octokit calls: mock at the function boundary, not deep inside `@octokit/rest`
-- Supabase: mock the `supabase` client returned by `locals`
-
-## Patterns
+### Test Descriptions
+Use clear, descriptive test names that explain behavior:
 
 ```typescript
-// utils.test.ts
+// ✅ Good
+describe('computeDurationMs', () => {
+  it('returns null when either date is missing', () => {});
+  it('returns null when end date is before start date', () => {});
+  it('computes correct duration in milliseconds', () => {});
+});
+
+// ❌ Bad
+describe('computeDurationMs', () => {
+  it('works', () => {});
+  it('handles edge cases', () => {});
+});
+```
+
+## What to Test (Priority Order)
+
+### Critical Paths (100% Coverage Required)
+1. `src/lib/utils.ts` – All utility functions
+2. `src/lib/server/github.ts` – All exported functions
+3. `src/lib/server/workflow-graph.ts` – Graph building logic
+4. `src/lib/server/mistral.ts` – AI integration
+5. `src/lib/server/kv-cache.ts` – Cache operations
+6. `src/lib/server/workflow-runs-cache.ts` – Supabase caching
+
+### API Endpoint Tests
+- `/api/optimize` – Auth guards (401 for unauthenticated, 400 for missing API key)
+- `/api/dashboard/data` – Response format validation
+- Auth callback – Token exchange and DB write logic
+
+### Testing Patterns
+
+#### Pure Functions (Easy to Test)
+```typescript
 import { describe, it, expect } from 'vitest';
 import { computeDurationMs, percentile } from './utils';
 
 describe('computeDurationMs', () => {
   it('returns null when either date is missing', () => {
     expect(computeDurationMs(null, '2024-01-01T00:01:00Z')).toBeNull();
+    expect(computeDurationMs('2024-01-01T00:00:00Z', null)).toBeNull();
   });
 
   it('computes correct duration', () => {
-    expect(computeDurationMs('2024-01-01T00:00:00Z', '2024-01-01T00:01:30Z')).toBe(90_000);
+    expect(computeDurationMs('2024-01-01T00:00:00Z', '2024-01-01T00:01:30Z'))
+      .toBe(90_000);
   });
-});
 
-describe('percentile', () => {
-  it('returns 0 for empty array', () => {
-    expect(percentile([], 50)).toBe(0);
+  it('returns null for invalid dates', () => {
+    expect(computeDurationMs('invalid', '2024-01-01T00:00:00Z')).toBeNull();
   });
 });
 ```
+
+#### Mocking External APIs
+```typescript
+import { describe, it, expect, vi } from 'vitest';
+
+// Mock at the module boundary
+vi.mock('@octokit/rest', () => ({
+  Octokit: vi.fn().mockImplementation(() => ({
+    rest: {
+      actions: {
+        listRepoWorkflows: vi.fn().mockResolvedValue({
+          data: { workflows: [] }
+        })
+      }
+    }
+  }))
+}));
+
+vi.mock('ai', () => ({
+  generateObject: vi.fn(),
+  generateText: vi.fn()
+}));
+
+// Mock Supabase with chain methods
+const createMockSupabase = () => ({
+  from: vi.fn().mockReturnValue({
+    select: vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null })
+      })
+    }),
+    upsert: vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        limit: vi.fn().mockResolvedValue({ data: [{ id: 1 }], error: null })
+      })
+    })
+  })
+});
+```
+
+## Running Tests
+
+### During Development
+```bash
+pnpm test              # Run tests once
+pnpm test:watch        # Run tests in watch mode
+pnpm test:coverage     # Run tests with coverage report
+```
+
+### Pre-Commit Checklist
+Before committing any code:
+```bash
+pnpm check             # TypeScript + Svelte check
+pnpm lint              # ESLint
+pnpm test:coverage     # Tests + coverage (must pass thresholds)
+```
+
+## Coverage Report Analysis
+
+After running `pnpm test:coverage`, review the table:
+
+```
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   88.56 |    74.45 |   98.21 |   88.56 |
+ lib               |     100 |      100 |     100 |     100 |
+  utils.ts         |     100 |      100 |     100 |     100 |
+ lib/server        |   87.52 |    68.13 |   97.67 |   87.52 |
+  github.ts        |   83.37 |    59.09 |      96 |   83.37 | ...1017,1040-1071
+```
+
+**Action required**: If any file shows coverage below 80% for lines/functions/statements, add tests before committing.
+
+## CodeCov Integration
+
+Coverage reports are automatically uploaded to CodeCov on:
+- Every pull request (PR comment with coverage diff)
+- Every release
+
+**PR Requirements**:
+- Coverage must not decrease from base branch
+- New code must meet 80% coverage threshold
+- Reviewers check CodeCov report before approval
+
+## Edge Cases to Always Test
+
+### Date/Duration Functions
+- Null/undefined inputs
+- Invalid date strings
+- Zero duration
+- Negative duration (end before start)
+- Very large durations
+
+### GitHub API Functions
+- Empty response arrays
+- Pagination edge cases
+- 401 unauthorized errors
+- Rate limiting scenarios
+
+### Cache Functions
+- Cache miss (null return)
+- Cache hit (fresh data)
+- Stale cache (past TTL but within stale window)
+- Expired cache (past stale TTL)
+- Parse errors (invalid JSON)
+- Network/connection errors
+
+### YAML Parsing
+- Empty YAML
+- Invalid/malformed YAML
+- Missing required fields
+- Circular dependencies
+- Template expressions (`${{ }}`)
+
+## Test Isolation
+
+- Each test should be independent (no shared state)
+- Use `beforeEach` to reset mocks:
+```typescript
+import { vi, beforeEach } from 'vitest';
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+```
+
+- Mock external dependencies, never call real APIs in tests
+- Use `environment: 'node'` in vitest.config.ts for server tests
 
 ## CI Requirements
 
 The following must pass in CI before merging:
 
 ```bash
-pnpm check          # svelte-check + tsc
-pnpm lint           # ESLint
-pnpm test:run       # Vitest (non-watch)
-pnpm audit --audit-level=high  # No high/critical vulnerabilities
+pnpm check                    # svelte-check + tsc
+pnpm lint                     # ESLint
+pnpm test:coverage            # Vitest with coverage thresholds
+pnpm audit --audit-level=high # No high/critical vulnerabilities
 ```
 
-## Mocking Server Modules
-
-```typescript
-import { vi } from 'vitest';
-
-vi.mock('$server/github', () => ({
-  buildDashboardData: vi.fn().mockResolvedValue({ totalRuns: 42 })
-}));
-```
-
-## Coverage Goals
-
-- Utility functions: 100% line coverage
-- Server data-fetching helpers: 80%+ branch coverage
-- Components: smoke test (renders without crash) for every dashboard component
+Failure of any check blocks merge.

@@ -62,11 +62,11 @@ jobs:
       - name: Unit tests with coverage
         run: pnpm test:coverage
 
-      # - name: Upload coverage to Codecov
-      #   uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
-      #   with:
-      #     files: ./coverage/lcov.info
-      #     token: ${{ secrets.CODECOV_TOKEN }}
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
+        with:
+          files: ./coverage/lcov.info
+          token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Build application
         run: pnpm run build
