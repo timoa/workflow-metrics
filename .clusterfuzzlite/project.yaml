@@ -1,0 +1,7 @@
+homepage: https://github.com/timoa/workflow-metrics
+language: javascript
+main_repo: https://github.com/timoa/workflow-metrics
+fuzzing_engines:
+  - libfuzzer
+sanitizers:
+  - none
