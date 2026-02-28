@@ -1,6 +1,7 @@
 ---
 description: Project overview, stack, and directory structure for workflow-metrics
-alwaysApply: true
+globs: ["src/**"]
+alwaysApply: false
 ---
 
 # Workflow Metrics – Project Overview

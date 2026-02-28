@@ -1,6 +1,6 @@
 ---
 description: Testing standards – unit tests with Vitest, integration patterns
-globs: **/*.test.ts,**/*.spec.ts,**/*.test.svelte.ts
+globs: src/**/*.test.ts,src/**/*.spec.ts,src/**/*.test.svelte.ts
 alwaysApply: false
 ---
 

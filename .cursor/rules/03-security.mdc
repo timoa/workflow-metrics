@@ -1,6 +1,7 @@
 ---
 description: Security practices – secrets, RLS, dependencies, OpenSSF Scorecard compliance
-alwaysApply: true
+globs: ["src/**", ".github/workflows/*.yml"]
+alwaysApply: false
 ---
 
 # Security

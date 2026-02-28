@@ -1,6 +1,6 @@
 ---
 description: Svelte 5 and SvelteKit 2 coding patterns
-globs: **/*.svelte,**/*.svelte.ts,**/routes/**/*.ts
+globs: src/**/*.svelte,src/**/*.svelte.ts,src/routes/**/*.ts
 alwaysApply: false
 ---
 

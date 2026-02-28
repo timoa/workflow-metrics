@@ -1,6 +1,6 @@
 ---
 description: Cloudflare Pages deployment, environment variables, and wrangler configuration
-globs: wrangler.toml,svelte.config.js,vite.config.ts
+globs: ["src/**", "wrangler.toml", "svelte.config.js", "vite.config.ts"]
 alwaysApply: false
 ---
 
