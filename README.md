@@ -1,3 +1,13 @@
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/timoa/workflow-metrics/badge)](https://securityscorecards.dev/viewer/?uri=github.com/timoa/workflow-metrics)
+[![Coverage Status](https://codecov.io/gh/timoa/workflow-metrics/branch/main/graph/badge.svg)](https://codecov.io/gh/timoa/workflow-metrics)
+[![CI (Tests, Lint & Security)](https://github.com/timoa/workflow-metrics/actions/workflows/pull-request.yml/badge.svg)](https://github.com/timoa/workflow-metrics/actions/workflows/pull-request.yml)
+[![Dependency Review](https://github.com/timoa/workflow-metrics/actions/workflows/dependency-review.yml/badge.svg)](https://github.com/timoa/workflow-metrics/actions/workflows/dependency-review.yml)
+[![CodeQL](https://github.com/timoa/workflow-metrics/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/timoa/workflow-metrics/actions/workflows/codeql-analysis.yml)
+[![OpenSSF Scorecard](https://github.com/timoa/workflow-metrics/actions/workflows/scorecard.yml/badge.svg)](https://github.com/timoa/workflow-metrics/actions/workflows/scorecard.yml)
+[![Release](https://github.com/timoa/workflow-metrics/actions/workflows/release.yml/badge.svg)](https://github.com/timoa/workflow-metrics/actions/workflows/release.yml)
+[![Deploy](https://github.com/timoa/workflow-metrics/actions/workflows/deploy.yml/badge.svg)](https://github.com/timoa/workflow-metrics/actions/workflows/deploy.yml)
+[![License](https://img.shields.io/github/license/timoa/workflow-metrics)](LICENSE)
+
 # Workflow Metrics
 
 An open-source dashboard for GitHub Actions metrics with AI-powered optimization suggestions.
