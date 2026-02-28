@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { JobBreakdown } from '$lib/types/metrics';
 	import { formatDuration } from '$lib/utils';
+	import { keyWithIndex } from './list-keys';
 
 	let { jobs }: { jobs: JobBreakdown[] } = $props();
 
@@ -18,7 +19,7 @@
 		</div>
 	{:else}
 		<div class="space-y-3">
-			{#each sorted as job (job.jobName)}
+			{#each sorted as job, i (keyWithIndex('job', job.jobName, i))}
 				<div class="space-y-1">
 					<div class="flex items-center justify-between text-xs">
 						<span class="text-foreground font-medium truncate max-w-48" title={job.jobName}>

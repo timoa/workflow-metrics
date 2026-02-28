@@ -1,7 +1,9 @@
 <script lang="ts">
 	import type { WorkflowMinutesShare, JobMinutesShare, RunnerType } from '$lib/types/metrics';
+	import { buildMinutesSegmentKey } from './segment-keys';
 
 	type Segment = {
+		key: string;
 		name: string;
 		minutes: number;
 		billableMinutes: number;
@@ -59,7 +61,8 @@
 
 	// Normalise union type to a common shape
 	const segments = $derived<Segment[]>(
-		(data as Array<WorkflowMinutesShare | JobMinutesShare>).map((d) => ({
+		(data as Array<WorkflowMinutesShare | JobMinutesShare>).map((d, i) => ({
+			key: buildMinutesSegmentKey(d, i),
 			name: getDisplayName(d),
 			minutes: d.minutes,
 			billableMinutes: d.billableMinutes,
@@ -122,6 +125,7 @@
 	const GAP = 2; // gap between segments in degrees
 
 	type DonutSegment = {
+		key: string;
 		name: string;
 		minutes: number;
 		billableMinutes: number;
@@ -151,6 +155,7 @@
 			const offset = -(cumulativeDegrees / 360) * CIRCUMFERENCE;
 
 			result.push({
+				key: seg.key,
 				name: seg.name,
 				minutes: seg.minutes,
 				billableMinutes: seg.billableMinutes,
@@ -234,7 +239,7 @@
 						class="text-muted/40"
 					/>
 					<!-- Segments -->
-					{#each donutSegments as seg, i (seg.name)}
+					{#each donutSegments as seg, i (seg.key)}
 						<!-- svelte-ignore a11y_no_static_element_interactions -->
 						<circle
 							cx={CX}
@@ -328,7 +333,7 @@
 
 	<!-- Legend -->
 	<div class="flex-1 min-w-0 space-y-2.5 py-1">
-			{#each donutSegments.slice(0, 8) as seg (seg.name)}
+			{#each donutSegments.slice(0, 8) as seg (seg.key)}
 			{@const isEstimated = seg.runnerDetected !== undefined ? !seg.runnerDetected : billableIsEstimate}
 			<div class="flex items-start gap-2 text-xs min-w-0">
 				<span

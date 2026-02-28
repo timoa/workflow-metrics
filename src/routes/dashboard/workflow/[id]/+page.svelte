@@ -9,6 +9,7 @@
 	import OptimizePanel from '$lib/components/dashboard/OptimizePanel.svelte';
 	import WorkflowJobGraph from '$lib/components/dashboard/WorkflowJobGraph.svelte';
 	import { formatDuration, failureRateColor, failureRateBorderColor, successRateColor, successRateBorderColor } from '$lib/utils';
+	import { keyWithIndex } from '$lib/components/dashboard/list-keys';
 
 	let { data }: { data: PageData } = $props();
 	let { detailData, owner, repo, hasMistralKey } = $derived(data);
@@ -247,7 +248,7 @@
 					</p>
 				</div>
 				<div class="space-y-3">
-						{#each detailData.stepBreakdown as step (step.stepName)}
+						{#each detailData.stepBreakdown as step, i (keyWithIndex('step', step.stepName, i))}
 							<div class="space-y-1">
 								<div class="flex items-center justify-between text-xs">
 									<span class="text-foreground font-medium truncate max-w-52" title={step.stepName}>

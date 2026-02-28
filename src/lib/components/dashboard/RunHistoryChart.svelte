@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { RunDataPoint, WorkflowFileCommit } from '$lib/types/metrics';
 	import { SvelteMap } from 'svelte/reactivity';
+	import { keyWithIndex } from './list-keys';
 
 	let { data, commits = [] }: { data: RunDataPoint[]; commits?: WorkflowFileCommit[] } = $props();
 
@@ -289,7 +290,7 @@
 						{#if hoveredMarker}
 							<div class="col-span-2 border-t border-border pt-1 mt-0.5 space-y-1">
 								<span class="text-primary font-medium">Workflow file changes</span>
-								{#each hoveredMarker.commits as commit (commit.sha)}
+								{#each hoveredMarker.commits as commit, i (keyWithIndex('commit', commit.sha, i))}
 									<div class="text-muted-foreground">
 										<span class="font-mono text-foreground">{commit.sha}</span>
 										{commit.message ? ` — ${commit.message}` : ''}
