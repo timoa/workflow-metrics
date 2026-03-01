@@ -80,9 +80,9 @@ jobs:
           PUBLIC_SUPABASE_URL: ${{ vars.PUBLIC_SUPABASE_URL }}
           PUBLIC_SUPABASE_ANON_KEY: ${{ vars.PUBLIC_SUPABASE_ANON_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          GITHUB_APP_ID: ${{ vars.GITHUB_APP_ID }}
-          GITHUB_APP_PRIVATE_KEY: ${{ secrets.GITHUB_APP_PRIVATE_KEY }}
-          GITHUB_APP_SLUG: ${{ vars.GITHUB_APP_SLUG }}
+          GITHUB_APP_ID: ${{ vars.WORKFLOW_METRICS_APP_ID }}
+          GITHUB_APP_PRIVATE_KEY: ${{ secrets.WORKFLOW_METRICS_APP_PRIVATE_KEY }}
+          GITHUB_APP_SLUG: ${{ vars.WORKFLOW_METRICS_APP_SLUG }}
         run: pnpm run build
 
       - name: Deploy application
@@ -90,9 +90,9 @@ jobs:
           PUBLIC_SUPABASE_URL: ${{ vars.PUBLIC_SUPABASE_URL }}
           PUBLIC_SUPABASE_ANON_KEY: ${{ vars.PUBLIC_SUPABASE_ANON_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          GITHUB_APP_ID: ${{ vars.GITHUB_APP_ID }}
+          GITHUB_APP_ID: ${{ vars.WORKFLOW_METRICS_APP_ID }}
           GITHUB_APP_PRIVATE_KEY: ${{ secrets.GITHUB_APP_PRIVATE_KEY }}
-          GITHUB_APP_SLUG: ${{ vars.GITHUB_APP_SLUG }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          GITHUB_APP_SLUG: ${{ vars.WORKFLOW_METRICS_APP_SLUG }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: pnpm run deploy
