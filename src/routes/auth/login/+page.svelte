@@ -23,24 +23,24 @@
 	}
 </script>
 
-<div class="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+<div class="login-bg min-h-screen flex flex-col items-center justify-center p-4">
 	<div class="w-full max-w-md space-y-8">
 		<!-- Logo & Brand -->
 		<div class="text-center space-y-3">
 			<div class="flex items-center justify-center gap-2">
 				<img src="/logo.svg" alt="" class="size-10 h-10 w-10 object-contain" />
-				<span class="text-2xl font-bold text-foreground">Workflow Metrics</span>
+				<span class="text-2xl font-bold text-white">Workflow Metrics</span>
 			</div>
-			<p class="text-muted-foreground text-sm">
+			<p class="text-sm" style="color: #9dafd0;">
 				GitHub Actions analytics and AI-powered optimization
 			</p>
 		</div>
 
 		<!-- Login Card -->
-		<div class="bg-card border border-border rounded-xl p-8 shadow-sm space-y-6">
+		<div class="login-card rounded-xl p-8 space-y-6">
 			<div class="space-y-1">
-				<h1 class="text-xl font-semibold text-foreground">Welcome back</h1>
-				<p class="text-sm text-muted-foreground">Sign in with GitHub to access your dashboards</p>
+				<h1 class="text-xl font-semibold text-white">Welcome back</h1>
+				<p class="text-sm" style="color: #9dafd0;">Sign in with GitHub to access your dashboards</p>
 			</div>
 
 			{#if error}
@@ -52,7 +52,7 @@
 			<button
 				onclick={signInWithGitHub}
 				disabled={loading}
-				class="w-full flex items-center justify-center gap-3 bg-foreground text-background hover:bg-foreground/90 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg px-4 py-3 text-sm font-medium transition-colors"
+				class="w-full flex items-center justify-center gap-3 bg-white text-gray-900 hover:bg-white/90 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg px-4 py-3 text-sm font-medium transition-colors"
 			>
 				{#if loading}
 					<svg class="size-4 animate-spin" viewBox="0 0 24 24" fill="none">
@@ -68,7 +68,7 @@
 				{/if}
 			</button>
 
-			<p class="text-xs text-center text-muted-foreground">
+			<p class="text-xs text-center" style="color: #9dafd0;">
 				We request <strong>repo</strong> and <strong>read:org</strong> permissions to access
 				your workflows and organizations.
 			</p>
@@ -83,9 +83,26 @@
 			] as feature (feature.label)}
 				<div class="space-y-1">
 					<div class="text-2xl">{feature.icon}</div>
-					<p class="text-xs text-muted-foreground">{feature.label}</p>
+					<p class="text-xs" style="color: #9dafd0;">{feature.label}</p>
 				</div>
 			{/each}
 		</div>
 	</div>
 </div>
+
+<style>
+	.login-bg {
+		background:
+			radial-gradient(ellipse 80% 50% at 50% 0%, rgba(50, 80, 255, 0.1), transparent),
+			radial-gradient(ellipse 70% 45% at 50% 100%, rgba(255, 120, 30, 0.12), transparent),
+			#080812;
+	}
+
+	.login-card {
+		background: #101a34;
+		box-shadow:
+			0 0 0 1px rgba(126, 156, 255, 0.5),
+			0 24px 68px rgba(5, 9, 20, 0.78),
+			0 0 54px rgba(60, 215, 255, 0.22);
+	}
+</style>
