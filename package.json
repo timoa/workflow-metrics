@@ -39,7 +39,7 @@
 		"layerchart": "^1.0.13",
 		"marked": "^17.0.3",
 		"yaml": "^2.8.2",
-		"zod": "^3.25.76"
+		"zod": "^4.0.0"
 	},
 	"devDependencies": {
 		"@eslint/js": "^9.26.0",
