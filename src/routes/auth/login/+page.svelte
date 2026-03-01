@@ -75,17 +75,37 @@
 		</div>
 
 		<!-- Features -->
-		<div class="grid grid-cols-3 gap-4 text-center">
-			{#each [
-				{ icon: '📊', label: 'Run analytics' },
-				{ icon: '⚡', label: 'Duration trends' },
-				{ icon: '🤖', label: 'AI optimization' }
-			] as feature (feature.label)}
-				<div class="space-y-1">
-					<div class="text-2xl">{feature.icon}</div>
-					<p class="text-xs" style="color: #9dafd0;">{feature.label}</p>
+		<div class="grid grid-cols-3 gap-3">
+			<div class="feature-pill">
+				<div class="feature-icon">
+					<!-- Bar chart -->
+					<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+						<rect x="2" y="10" width="3" height="8" rx="0.5"/>
+						<rect x="8.5" y="6" width="3" height="12" rx="0.5"/>
+						<rect x="15" y="2" width="3" height="16" rx="0.5"/>
+					</svg>
 				</div>
-			{/each}
+				<p class="feature-label">DORA metrics</p>
+			</div>
+			<div class="feature-pill">
+				<div class="feature-icon">
+					<!-- Clock / duration -->
+					<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+						<circle cx="10" cy="10" r="7.5"/>
+						<polyline points="10,5.5 10,10 13,12.5"/>
+					</svg>
+				</div>
+				<p class="feature-label">Duration trends</p>
+			</div>
+			<div class="feature-pill">
+				<div class="feature-icon">
+					<!-- Sparkle / AI -->
+					<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+						<path d="M10 2.5 L11.5 8.5 L17.5 10 L11.5 11.5 L10 17.5 L8.5 11.5 L2.5 10 L8.5 8.5 Z"/>
+					</svg>
+				</div>
+				<p class="feature-label">AI optimization</p>
+			</div>
 		</div>
 	</div>
 </div>
@@ -104,5 +124,38 @@
 			0 0 0 1px rgba(126, 156, 255, 0.5),
 			0 24px 68px rgba(5, 9, 20, 0.78),
 			0 0 54px rgba(60, 215, 255, 0.22);
+	}
+
+	.feature-pill {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 8px;
+		padding: 14px 8px;
+	}
+
+	.feature-icon {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 40px;
+		height: 40px;
+		border-radius: 12px;
+		border: 1px solid rgba(100, 130, 255, 0.3);
+		background: linear-gradient(135deg, rgba(80, 130, 255, 0.2), rgba(40, 200, 220, 0.1));
+		color: #60c8fa;
+	}
+
+	.feature-icon svg {
+		width: 18px;
+		height: 18px;
+	}
+
+	.feature-label {
+		font-size: 0.7rem;
+		font-weight: 500;
+		color: #9dafd0;
+		text-align: center;
+		line-height: 1.3;
 	}
 </style>
