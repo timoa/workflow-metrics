@@ -1,3 +1,10 @@
+## [0.1.8](https://github.com/timoa/workflow-metrics/compare/v0.1.7...v0.1.8) (2026-03-01)
+
+
+### Bug Fixes
+
+* **workflow:** remove unused lib ([640c2d7](https://github.com/timoa/workflow-metrics/commit/640c2d7607409816037b7d201956008b2392cdc7))
+
 ## [0.1.7](https://github.com/timoa/workflow-metrics/compare/v0.1.6...v0.1.7) (2026-02-28)
 
 
