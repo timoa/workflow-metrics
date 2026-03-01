@@ -6,7 +6,6 @@
 	import bash from 'highlight.js/lib/languages/bash';
 	import json from 'highlight.js/lib/languages/json';
 	import javascript from 'highlight.js/lib/languages/javascript';
-	import { tick } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 	import type { WorkflowMetrics, OptimizationHistoryEntry } from '$lib/types/metrics';
 
@@ -211,17 +210,6 @@
 		optimize();
 	});
 
-	// Highlight code blocks after DOM update (re-run when openItems changes so expanded blocks get highlighted)
-	$effect(() => {
-		if (!entry || !browser) return;
-		// Re-run highlight effect when entry changes or browser is available
-		void tick().then(() => {
-			document.querySelectorAll('.opt-code-block code.hljs').forEach((el) => {
-				hljs.highlightElement(el as HTMLElement);
-			});
-		});
-	});
-
 	function toggleOpen(id: string) {
 		if (openItems.has(id)) openItems.delete(id);
 		else openItems.add(id);
@@ -307,18 +295,10 @@
 		return s.trim();
 	}
 
-	function escapeHtml(s: string): string {
-		return s
-			.replace(/&/g, '&amp;')
-			.replace(/</g, '&lt;')
-			.replace(/>/g, '&gt;')
-			.replace(/"/g, '&quot;');
-	}
-
 	function renderCode(code: string): string {
 		const cleaned = stripCodeFences(code);
-		const escaped = escapeHtml(cleaned);
-		return `<pre class="opt-code-block"><code class="hljs language-yaml">${escaped}</code></pre>`;
+		const result = hljs.highlight(cleaned, { language: 'yaml', ignoreIllegals: true });
+		return `<pre class="opt-code-block"><code class="hljs language-yaml">${result.value}</code></pre>`;
 	}
 </script>
 
