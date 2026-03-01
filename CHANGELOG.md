@@ -1,3 +1,10 @@
+## [0.1.9](https://github.com/timoa/workflow-metrics/compare/v0.1.8...v0.1.9) (2026-03-01)
+
+
+### Bug Fixes
+
+* **login:** redesign the login page ([b8207d2](https://github.com/timoa/workflow-metrics/commit/b8207d2b9ff819d4ca0efc7c81d1f7280de1c761))
+
 ## [0.1.8](https://github.com/timoa/workflow-metrics/compare/v0.1.7...v0.1.8) (2026-03-01)
 
 
