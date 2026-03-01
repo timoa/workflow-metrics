@@ -1,3 +1,10 @@
+## [0.1.10](https://github.com/timoa/workflow-metrics/compare/v0.1.9...v0.1.10) (2026-03-01)
+
+
+### Bug Fixes
+
+* **login:** fix login icons ([a8e90a6](https://github.com/timoa/workflow-metrics/commit/a8e90a6f4518677e5eca716c46238a19fcdeae38))
+
 ## [0.1.9](https://github.com/timoa/workflow-metrics/compare/v0.1.8...v0.1.9) (2026-03-01)
 
 
