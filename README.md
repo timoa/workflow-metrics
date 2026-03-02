@@ -240,6 +240,10 @@ Tables:
 - `optimization_history` — History of AI optimization suggestions per workflow
 - `github_app_installations` — GitHub App installation records per repository
 
+## Related Projects
+
+**[Workflow Editor](https://github.com/timoa/workflow-editor)** — A VSCode extension that lets you edit GitHub Actions workflow files visually: jobs and dependencies as an interactive diagram, trigger configuration, matrix strategy, and step editing — all without touching YAML directly. A great companion to Workflow Metrics when you want to act on the insights and improve your workflows.
+
 ## Contributing
 
 Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, coding standards, and the PR process.
