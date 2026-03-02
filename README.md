@@ -1,3 +1,5 @@
+# Workflow Metrics
+
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/timoa/workflow-metrics/badge)](https://securityscorecards.dev/viewer/?uri=github.com/timoa/workflow-metrics)
 [![Coverage Status](https://codecov.io/gh/timoa/workflow-metrics/branch/main/graph/badge.svg)](https://codecov.io/gh/timoa/workflow-metrics)
 [![CI (Tests, Lint & Security)](https://github.com/timoa/workflow-metrics/actions/workflows/pull-request.yml/badge.svg)](https://github.com/timoa/workflow-metrics/actions/workflows/pull-request.yml)
@@ -8,9 +10,10 @@
 [![Deploy](https://github.com/timoa/workflow-metrics/actions/workflows/deploy.yml/badge.svg)](https://github.com/timoa/workflow-metrics/actions/workflows/deploy.yml)
 [![License](https://img.shields.io/github/license/timoa/workflow-metrics)](LICENSE)
 
-# Workflow Metrics
 
 An open-source dashboard for GitHub Actions metrics with AI-powered optimization suggestions.
+
+![Workflow Metrics demo](https://workflow-metrics.com/images/demo/workflow-metrics-26-03-02.gif)
 
 ## Features
 
@@ -29,6 +32,7 @@ An open-source dashboard for GitHub Actions metrics with AI-powered optimization
 - **Workflow structure flow chart** — Interactive workflow graph (trigger + job dependency DAG) with runner labels and step counts
 - **Job + step breakdowns** — Per-job timing analysis (avg/min/max) and slowest-job step-level breakdown from recent completed runs
 - **AI optimization with Mistral** — Click "Optimize with AI" on any workflow to get streaming, actionable suggestions (caching, parallelization, runner optimization, cost, etc.)
+- **Apply as PR** — Push AI optimization suggestions directly as a pull request via the GitHub App integration
 - **Settings page** — Manage GitHub connections, tracked repositories, Mistral API key, and theme
 - **Dark / light mode** — Dark by default, persisted per user preference
 
@@ -66,38 +70,121 @@ flowchart LR
 The UI design and color system are inspired by the free template **"Dark Admin Dashboard"** by [Malik Ali](https://www.figma.com/@malik_ali).  
 Figma template: [Dark Admin Dashboards](https://www.figma.com/community/file/1325597018063319916/free-dark-admin-dashboards).
 
-## Setup
+## Getting Started
+
+### Prerequisites
+
+- Node.js >= 24
+- PNPM >= 10
 
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/your-org/workflow-metrics.git
+git clone https://github.com/timoa/workflow-metrics.git
 cd workflow-metrics
 pnpm install
 ```
 
 ### 2. Create a Supabase project
 
-1. Create a new project at [supabase.com](https://supabase.com)
-2. **Run migrations** (choose one):
-   - **With Supabase CLI:** `supabase link --project-ref YOUR_PROJECT_REF` (ref is in the dashboard URL: `https://supabase.com/dashboard/project/YOUR_PROJECT_REF`), then `supabase db push`
-   - **Without CLI:** In Supabase Dashboard → **SQL Editor**, run each file in `supabase/migrations/` in order: `001_initial.sql`, `002_workflow_runs_cache.sql`, `003_workflow_runs_cache_cleanup.sql`, `004_workflow_detail_runs_cache.sql`
-3. **GitHub OAuth (use an OAuth App, not a GitHub App):**
-  - Create a **GitHub OAuth App** at [GitHub → Settings → Developer settings → OAuth Apps → New OAuth App](https://github.com/settings/applications/new)
-  - Set **Authorization callback URL** to your **Supabase** callback: `https://<your-project-ref>.supabase.co/auth/v1/callback` (find your project ref in Supabase Dashboard → Settings → API)
-  - Copy the Client ID and Client secret, then in **Supabase → Authentication → Providers → GitHub** paste them and enable GitHub
-  - In **Supabase → Authentication → URL Configuration**, add your app’s callback to **Redirect URLs**: `http://localhost:5173/auth/callback` (local) and `https://your-domain.com/auth/callback` (production)
+1. Create a new project at [supabase.com](https://supabase.com).
+2. **Run database migrations** (choose one method):
+   - **With Supabase CLI:**
+     ```bash
+     supabase link --project-ref YOUR_PROJECT_REF
+     supabase db push
+     ```
+     Your project ref is in the Supabase dashboard URL: `https://supabase.com/dashboard/project/YOUR_PROJECT_REF`.
+   - **Without CLI:** In **Supabase Dashboard → SQL Editor**, run each file in `supabase/migrations/` in numerical order, from `001_initial.sql` through `008_github_app_installations_avatar_name.sql`.
+3. **Enable GitHub OAuth** (use a GitHub OAuth App, not a GitHub App):
+   - Go to [GitHub → Settings → Developer settings → OAuth Apps → New OAuth App](https://github.com/settings/applications/new).
+   - Set **Authorization callback URL** to your Supabase callback: `https://<your-project-ref>.supabase.co/auth/v1/callback`.
+   - Copy the **Client ID** and **Client secret**, then in **Supabase → Authentication → Providers → GitHub**, paste them and enable GitHub.
+   - In **Supabase → Authentication → URL Configuration → Redirect URLs**, add:
+     ```
+     http://localhost:5173/auth/callback
+     https://your-project.pages.dev/auth/callback
+     ```
+4. From **Supabase → Project Settings → API**, copy:
+   - **Project URL** → `PUBLIC_SUPABASE_URL`
+   - **anon / public** key → `PUBLIC_SUPABASE_ANON_KEY`
+   - **service_role** key → `SUPABASE_SERVICE_ROLE_KEY` *(server-only; bypasses RLS for cache writes — never expose this key to the browser or commit it to source control)*
 
-### 3. Configure environment variables
+### 3. Create a GitHub App (for "Apply as PR")
 
-Copy `.env.example` to `.env` and fill in:
+The "Apply as PR" feature — which pushes AI optimization suggestions directly as a pull request — requires a GitHub App (separate from the OAuth App used for login).
 
-```env
-PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+1. Go to [GitHub → Settings → Developer settings → GitHub Apps → New GitHub App](https://github.com/settings/apps/new).
+2. Fill in the details:
+   - **GitHub App name**: e.g. `workflow-metrics-bot`
+   - **Homepage URL**: your app URL (e.g. `https://your-project.pages.dev`)
+   - **Callback URL**: `https://your-project.pages.dev/auth/github-app/callback`
+     - For local dev, also add: `http://localhost:5173/auth/github-app/callback`
+   - **Webhook**: uncheck **Active** (not needed)
+3. Under **Repository permissions**, set:
+   - **Contents**: Read & Write
+   - **Pull requests**: Read & Write
+   - **Workflows**: Read & Write
+   - **Actions**: Read
+4. Click **Create GitHub App**.
+5. On the App settings page, note the **App ID** → `GITHUB_APP_ID`.
+6. Note the **App slug** from the URL (`github.com/apps/<slug>`) → `GITHUB_APP_SLUG`.
+7. Scroll to **Private keys** → **Generate a private key**. A `.pem` file will download.
+   - Collapse the newlines for use as a single-line secret:
+     ```bash
+     awk 'NF {sub(/\r/, ""); printf "%s\\n",$0;}' your-app.pem
+     ```
+   - Use the output as `GITHUB_APP_PRIVATE_KEY`.
+
+### 4. Get a Mistral AI API key (for AI optimization)
+
+The "Optimize with AI" feature streams actionable suggestions (caching, parallelization, runner optimization, cost reduction) powered by Mistral AI. The key is **per-user** and entered in the app Settings page — it is not a server environment variable.
+
+1. Sign up or log in at [console.mistral.ai](https://console.mistral.ai).
+2. Go to **API Keys** → **Create new key**.
+3. Copy the key — you will not be able to see it again.
+4. After logging into the app, go to **Settings** and paste the key into the **Mistral API key** field.
+
+The key is stored encrypted in Supabase and is only used server-side. AI optimization is simply unavailable without one — the rest of the app works normally.
+
+### 5. Configure environment variables
+
+Copy `.env.example` to `.env`:
+
+```bash
+cp .env.example .env
 ```
 
-### 4. Run locally
+Fill in the values:
+
+```env
+# ── Supabase ──────────────────────────────────────────────────────────────────
+PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
+# ── App URL (production only) ─────────────────────────────────────────────────
+# Required in production so OAuth redirects back to the correct URL.
+# Leave commented out for local dev — the app uses the request origin automatically.
+# PUBLIC_APP_URL=https://your-project.pages.dev
+
+# ── GitHub App (for "Apply as PR") ───────────────────────────────────────────
+GITHUB_APP_ID=your-numeric-app-id
+GITHUB_APP_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----"
+GITHUB_APP_SLUG=your-github-app-slug
+```
+
+| Variable | Required | Description |
+|---|---|---|
+| `PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
+| `PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anon (public) key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Supabase service role key — bypasses RLS for server-side cache writes. Never expose this to the browser or commit it to source control |
+| `PUBLIC_APP_URL` | Production only | Your deployed app URL (e.g. `https://your-project.pages.dev`), no trailing slash |
+| `GITHUB_APP_ID` | Yes | Numeric App ID from GitHub App settings |
+| `GITHUB_APP_PRIVATE_KEY` | Yes | RSA private key from GitHub App settings (full PEM, newlines as `\n`) |
+| `GITHUB_APP_SLUG` | Yes | URL slug of your GitHub App (e.g. `workflow-metrics-bot`) |
+
+### 6. Run locally
 
 ```bash
 pnpm dev
@@ -107,43 +194,37 @@ Open [http://localhost:5173](http://localhost:5173).
 
 ## Deployment (Cloudflare Pages)
 
-### 1. Deploy to Cloudflare Pages
+### 1. Connect to Cloudflare Pages
 
 Connect your GitHub repository to Cloudflare Pages with these build settings:
 
 - **Build command**: `pnpm run build`
 - **Build output directory**: `.svelte-kit/cloudflare`
-- **Node.js version**: 20+
+- **Node.js version**: 24
 
 ### 2. Set environment variables
 
-In the Cloudflare Pages dashboard → Settings → Environment Variables:
+In **Cloudflare Pages → Settings → Environment Variables**, add all variables from the table above, including `PUBLIC_APP_URL` set to your production URL.
 
-| Variable                   | Description                                                       |
-| -------------------------- | ----------------------------------------------------------------- |
-| `PUBLIC_SUPABASE_URL`      | Your Supabase project URL                                         |
-| `PUBLIC_SUPABASE_ANON_KEY` | Your Supabase anon key (publishable key)                          |
-| `PUBLIC_APP_URL`           | **Production only.** Your app URL, e.g. `https://your-project.pages.dev` (no trailing slash). When running on localhost, the app uses the request origin automatically so you can test OAuth locally. |
+| Variable | Description |
+|---|---|
+| `PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `PUBLIC_SUPABASE_ANON_KEY` | Supabase anon (public) key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key |
+| `PUBLIC_APP_URL` | Your production app URL (e.g. `https://your-project.pages.dev`) |
+| `GITHUB_APP_ID` | GitHub App ID |
+| `GITHUB_APP_PRIVATE_KEY` | GitHub App RSA private key (full PEM, newlines as `\n`) |
+| `GITHUB_APP_SLUG` | GitHub App URL slug |
 
 ### 3. Update Supabase OAuth redirect URLs
 
-Add the allowed redirect URLs in Supabase (Authentication → URL Configuration → Redirect URLs). For local dev and production:
+In **Supabase → Authentication → URL Configuration → Redirect URLs**, ensure all URLs are listed:
 
 ```
 http://localhost:5173/auth/callback
 https://your-project.pages.dev/auth/callback
-https://your-custom-domain.com/auth/callback
+https://your-custom-domain.com/auth/callback   ← if using a custom domain
 ```
-
-## AI Optimization (Optional)
-
-The "Optimize with AI" feature requires a Mistral AI API key:
-
-1. Get a key at [console.mistral.ai](https://console.mistral.ai)
-2. Add it in the app **Settings** page
-3. Click "Optimize with AI" on any workflow detail page
-
-The key is stored encrypted in Supabase and is only used server-side.
 
 ## Database Schema
 
@@ -153,11 +234,15 @@ Tables:
 
 - `github_connections` — GitHub OAuth tokens per user
 - `repositories` — Tracked repositories per user
-- `user_settings` — Mistral API key, theme, default repo
+- `user_settings` — Mistral API key (encrypted), theme, default repo
+- `workflow_runs_cache` — Cached workflow run data to reduce GitHub API calls
+- `workflow_detail_runs_cache` — Cached per-workflow run details
+- `optimization_history` — History of AI optimization suggestions per workflow
+- `github_app_installations` — GitHub App installation records per repository
 
 ## Contributing
 
-Contributions welcome! Please open an issue or PR.
+Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, coding standards, and the PR process.
 
 ## License
 
