@@ -1,3 +1,10 @@
+## [0.1.11](https://github.com/timoa/workflow-metrics/compare/v0.1.10...v0.1.11) (2026-03-02)
+
+
+### Bug Fixes
+
+* **docs:** update README to mention Workflow Editor ([f204043](https://github.com/timoa/workflow-metrics/commit/f204043b67cc1faede91db2cc5f6793dd72d42f0))
+
 ## [0.1.10](https://github.com/timoa/workflow-metrics/compare/v0.1.9...v0.1.10) (2026-03-01)
 
 
