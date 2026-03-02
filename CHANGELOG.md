@@ -1,3 +1,10 @@
+## [0.1.12](https://github.com/timoa/workflow-metrics/compare/v0.1.11...v0.1.12) (2026-03-02)
+
+
+### Bug Fixes
+
+* **db:**  fix function public.update_updated_at_column has a role mutable search_path ([3e5ce7e](https://github.com/timoa/workflow-metrics/commit/3e5ce7ee0622789f788052acf40f5431ca457fa6))
+
 ## [0.1.11](https://github.com/timoa/workflow-metrics/compare/v0.1.10...v0.1.11) (2026-03-02)
 
 
