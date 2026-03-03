@@ -1,3 +1,31 @@
+## [0.1.14](https://github.com/timoa/workflow-metrics/compare/v0.1.13...v0.1.14) (2026-03-03)
+
+
+### Bug Fixes
+
+* **deps:** pin all the version in workflows and package.json ([b99374f](https://github.com/timoa/workflow-metrics/commit/b99374f18e3b2134b6b467dfd4553f35f3d12539))
+
+## [0.1.13](https://github.com/timoa/workflow-metrics/compare/v0.1.12...v0.1.13) (2026-03-02)
+
+
+### Bug Fixes
+
+* **cicd:** enforce filtering egress traffic ([93637ce](https://github.com/timoa/workflow-metrics/commit/93637cee79f658111c32adfa53d7eed73147b7fc))
+
+## [0.1.12](https://github.com/timoa/workflow-metrics/compare/v0.1.11...v0.1.12) (2026-03-02)
+
+
+### Bug Fixes
+
+* **db:**  fix function public.update_updated_at_column has a role mutable search_path ([3e5ce7e](https://github.com/timoa/workflow-metrics/commit/3e5ce7ee0622789f788052acf40f5431ca457fa6))
+
+## [0.1.11](https://github.com/timoa/workflow-metrics/compare/v0.1.10...v0.1.11) (2026-03-02)
+
+
+### Bug Fixes
+
+* **docs:** update README to mention Workflow Editor ([f204043](https://github.com/timoa/workflow-metrics/commit/f204043b67cc1faede91db2cc5f6793dd72d42f0))
+
 ## [0.1.10](https://github.com/timoa/workflow-metrics/compare/v0.1.9...v0.1.10) (2026-03-01)
 
 
