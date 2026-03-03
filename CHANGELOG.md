@@ -1,3 +1,10 @@
+## [0.1.16](https://github.com/timoa/workflow-metrics/compare/v0.1.15...v0.1.16) (2026-03-03)
+
+
+### Bug Fixes
+
+* **deps:** update dependency @supabase/ssr to v0.8.0 ([706b81e](https://github.com/timoa/workflow-metrics/commit/706b81e1194d9d3a245f885fa2dd4f4e73c3059e))
+
 ## [0.1.15](https://github.com/timoa/workflow-metrics/compare/v0.1.14...v0.1.15) (2026-03-03)
 
 
