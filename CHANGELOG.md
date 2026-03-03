@@ -1,3 +1,10 @@
+## [0.1.14](https://github.com/timoa/workflow-metrics/compare/v0.1.13...v0.1.14) (2026-03-03)
+
+
+### Bug Fixes
+
+* **deps:** pin all the version in workflows and package.json ([b99374f](https://github.com/timoa/workflow-metrics/commit/b99374f18e3b2134b6b467dfd4553f35f3d12539))
+
 ## [0.1.13](https://github.com/timoa/workflow-metrics/compare/v0.1.12...v0.1.13) (2026-03-02)
 
 
