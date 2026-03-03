@@ -30,7 +30,7 @@
 		"@ai-sdk/mistral": "3.0.21",
 		"@fortawesome/fontawesome-free": "7.2.0",
 		"@octokit/rest": "22.0.1",
-		"@supabase/ssr": "0.5.2",
+		"@supabase/ssr": "0.8.0",
 		"@supabase/supabase-js": "2.98.0",
 		"@xyflow/svelte": "1.5.1",
 		"ai": "6.0.105",
