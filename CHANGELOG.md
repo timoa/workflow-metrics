@@ -1,3 +1,11 @@
+## [0.1.15](https://github.com/timoa/workflow-metrics/compare/v0.1.14...v0.1.15) (2026-03-03)
+
+
+### Bug Fixes
+
+* **deps:** fix the Zod version and pnpm-lock.yaml file ([44ba143](https://github.com/timoa/workflow-metrics/commit/44ba143ea3340e31c754af38a4402c3ed12dba25))
+* **deps:** update dependency zod to v4 ([8391a81](https://github.com/timoa/workflow-metrics/commit/8391a81838f0b0eddcf4b388d365951fb838ec36))
+
 ## [0.1.14](https://github.com/timoa/workflow-metrics/compare/v0.1.13...v0.1.14) (2026-03-03)
 
 
