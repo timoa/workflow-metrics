@@ -5,135 +5,135 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  cookie: ^0.7.0
+  cookie: 0.7.2
 
 importers:
 
   .:
     dependencies:
       '@ai-sdk/mistral':
-        specifier: ^3.0.21
+        specifier: 3.0.21
         version: 3.0.21(zod@3.25.76)
       '@fortawesome/fontawesome-free':
-        specifier: ^7.2.0
+        specifier: 7.2.0
         version: 7.2.0
       '@octokit/rest':
-        specifier: ^22.0.0
+        specifier: 22.0.1
         version: 22.0.1
       '@supabase/ssr':
-        specifier: ^0.5.0
+        specifier: 0.5.2
         version: 0.5.2(@supabase/supabase-js@2.98.0)
       '@supabase/supabase-js':
-        specifier: ^2.49.4
+        specifier: 2.98.0
         version: 2.98.0
       '@xyflow/svelte':
-        specifier: ^1.5.1
+        specifier: 1.5.1
         version: 1.5.1(svelte@5.53.6)
       ai:
-        specifier: ^6.0.105
+        specifier: 6.0.105
         version: 6.0.105(zod@3.25.76)
       dompurify:
-        specifier: ^3.3.1
+        specifier: 3.3.1
         version: 3.3.1
       highlight.js:
-        specifier: ^11.11.1
+        specifier: 11.11.1
         version: 11.11.1
       layerchart:
-        specifier: ^1.0.13
+        specifier: 1.0.13
         version: 1.0.13(svelte@5.53.6)(typescript@5.9.3)(yaml@2.8.2)
       marked:
-        specifier: ^17.0.3
+        specifier: 17.0.3
         version: 17.0.3
       yaml:
-        specifier: ^2.8.2
+        specifier: 2.8.2
         version: 2.8.2
       zod:
-        specifier: ^3.25.76
+        specifier: 3.25.76
         version: 3.25.76
     devDependencies:
       '@eslint/js':
-        specifier: ^9.26.0
+        specifier: 9.39.3
         version: 9.39.3
       '@sveltejs/adapter-cloudflare':
-        specifier: ^7.2.8
+        specifier: 7.2.8
         version: 7.2.8(@sveltejs/kit@2.53.4(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.53.6)(vite@6.4.1(@types/node@25.3.2)(jiti@1.21.7)(lightningcss@1.31.1)(yaml@2.8.2)))(svelte@5.53.6)(typescript@5.9.3)(vite@6.4.1(@types/node@25.3.2)(jiti@1.21.7)(lightningcss@1.31.1)(yaml@2.8.2)))(wrangler@4.69.0)
       '@sveltejs/kit':
-        specifier: ^2.53.0
+        specifier: 2.53.4
         version: 2.53.4(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.53.6)(vite@6.4.1(@types/node@25.3.2)(jiti@1.21.7)(lightningcss@1.31.1)(yaml@2.8.2)))(svelte@5.53.6)(typescript@5.9.3)(vite@6.4.1(@types/node@25.3.2)(jiti@1.21.7)(lightningcss@1.31.1)(yaml@2.8.2))
       '@sveltejs/vite-plugin-svelte':
-        specifier: ^6.2.4
+        specifier: 6.2.4
         version: 6.2.4(svelte@5.53.6)(vite@6.4.1(@types/node@25.3.2)(jiti@1.21.7)(lightningcss@1.31.1)(yaml@2.8.2))
       '@tailwindcss/vite':
-        specifier: ^4.1.8
+        specifier: 4.2.1
         version: 4.2.1(vite@6.4.1(@types/node@25.3.2)(jiti@1.21.7)(lightningcss@1.31.1)(yaml@2.8.2))
       '@vitest/coverage-v8':
-        specifier: ^3.0.0
+        specifier: 3.2.4
         version: 3.2.4(vitest@3.2.4(@types/node@25.3.2)(jiti@1.21.7)(lightningcss@1.31.1)(yaml@2.8.2))
       bits-ui:
-        specifier: ^1.3.18
+        specifier: 1.8.0
         version: 1.8.0(svelte@5.53.6)
       clsx:
-        specifier: ^2.1.1
+        specifier: 2.1.1
         version: 2.1.1
       eslint:
-        specifier: ^9.26.0
+        specifier: 9.39.3
         version: 9.39.3(jiti@1.21.7)
       eslint-plugin-svelte:
-        specifier: ^3.7.0
+        specifier: 3.15.0
         version: 3.15.0(eslint@9.39.3(jiti@1.21.7))(svelte@5.53.6)
       globals:
-        specifier: ^16.1.0
+        specifier: 16.5.0
         version: 16.5.0
       lucide-svelte:
-        specifier: ^0.564.0
-        version: 0.564.0(svelte@5.53.6)
+        specifier: 0.511.0
+        version: 0.511.0(svelte@5.53.6)
       mode-watcher:
-        specifier: ^0.5.1
+        specifier: 0.5.1
         version: 0.5.1(svelte@5.53.6)
       prettier:
-        specifier: ^3.5.3
+        specifier: 3.8.1
         version: 3.8.1
       prettier-plugin-svelte:
-        specifier: ^3.3.3
+        specifier: 3.5.0
         version: 3.5.0(prettier@3.8.1)(svelte@5.53.6)
       prettier-plugin-tailwindcss:
-        specifier: ^0.6.11
+        specifier: 0.6.14
         version: 0.6.14(prettier-plugin-svelte@3.5.0(prettier@3.8.1)(svelte@5.53.6))(prettier@3.8.1)
       sharp:
-        specifier: ^0.34.5
+        specifier: 0.34.5
         version: 0.34.5
       svelte:
-        specifier: ^5.53.5
+        specifier: 5.53.6
         version: 5.53.6
       svelte-check:
-        specifier: ^4.3.6
+        specifier: 4.4.4
         version: 4.4.4(picomatch@4.0.3)(svelte@5.53.6)(typescript@5.9.3)
       tailwind-merge:
-        specifier: ^3.3.0
+        specifier: 3.5.0
         version: 3.5.0
       tailwindcss:
-        specifier: ^4.1.8
+        specifier: 4.2.1
         version: 4.2.1
       tailwindcss-animate:
-        specifier: ^1.0.7
+        specifier: 1.0.7
         version: 1.0.7(tailwindcss@4.2.1)
       tw-animate-css:
-        specifier: ^1.2.9
+        specifier: 1.4.0
         version: 1.4.0
       typescript:
-        specifier: ~5.9.0
+        specifier: 5.9.3
         version: 5.9.3
       typescript-eslint:
-        specifier: ^8.56.1
+        specifier: 8.56.1
         version: 8.56.1(eslint@9.39.3(jiti@1.21.7))(typescript@5.9.3)
       vite:
-        specifier: ^6.2.6
+        specifier: 6.4.1
         version: 6.4.1(@types/node@25.3.2)(jiti@1.21.7)(lightningcss@1.31.1)(yaml@2.8.2)
       vitest:
-        specifier: ^3.0.0
+        specifier: 3.2.4
         version: 3.2.4(@types/node@25.3.2)(jiti@1.21.7)(lightningcss@1.31.1)(yaml@2.8.2)
       wrangler:
-        specifier: ^4.69.0
+        specifier: 4.69.0
         version: 4.69.0
 
 packages:
@@ -2175,8 +2175,8 @@ packages:
   lru-cache@10.4.3:
     resolution: {integrity: sha512-JNAzZcXrCt42VGLuYz0zfAzDfAvJWW6AfYlDBQyDV5DClI2m5sAmK+OIO7s59XfsRsWHp02jAJrRadPRGTt6SQ==}
 
-  lucide-svelte@0.564.0:
-    resolution: {integrity: sha512-jeubFecyzbeze/Zwu5pFHHrv/u8OtiZ7VesXXus4cAnfRQlmb8TDtiC5gb485z8e4aAqe8FF7I0OVB/TDFAggg==}
+  lucide-svelte@0.511.0:
+    resolution: {integrity: sha512-cSBj1UPKt1EXnj3VBUidBqwHyFQ83pLYiTaQ/67Q5thnaP9IPohL2UXjqEzgSXXklYPYQKaAv+kmVdliDWFjWQ==}
     peerDependencies:
       svelte: ^3 || ^4 || ^5.0.0-next.42
 
@@ -4788,7 +4788,7 @@ snapshots:
 
   lru-cache@10.4.3: {}
 
-  lucide-svelte@0.564.0(svelte@5.53.6):
+  lucide-svelte@0.511.0(svelte@5.53.6):
     dependencies:
       svelte: 5.53.6
 
