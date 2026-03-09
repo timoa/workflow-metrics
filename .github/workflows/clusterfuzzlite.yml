@@ -3,6 +3,8 @@ name: ClusterFuzzLite
 on:
   pull_request:
     branches: [main]
+    paths-ignore:
+      - '.github/workflows/**'
   workflow_dispatch:
   schedule:
     - cron: '30 2 * * 0'
