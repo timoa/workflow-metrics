@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { fade, scale } from 'svelte/transition';
+	import { Dialog } from 'bits-ui';
 	import type { WorkflowMetrics } from '$lib/types/metrics';
 
 	interface Props {
@@ -42,38 +42,24 @@
 		}
 	}
 
-	function handleBackdropClick(e: MouseEvent) {
-		if (e.target === e.currentTarget) {
-			onClose();
-		}
-	}
 </script>
 
-<!-- Backdrop -->
-<!-- svelte-ignore a11y_click_events_have_key_events -->
-<div
-	class="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm"
-	transition:fade={{ duration: 150 }}
-	onclick={handleBackdropClick}
-	role="presentation"
-	tabindex="-1"
->
-	<!-- Dialog -->
-	<div
-		class="fixed left-1/2 top-1/2 z-50 w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-card p-6 shadow-lg"
-		transition:scale={{ duration: 150, start: 0.95 }}
-		role="dialog"
-		aria-labelledby="dialog-title"
-		aria-describedby="dialog-description"
-	>
+<Dialog.Root open={true} onOpenChange={(open) => !open && onClose()}>
+	<Dialog.Portal>
+		<Dialog.Overlay
+			class="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0"
+		/>
+		<Dialog.Content
+			class="fixed left-1/2 top-1/2 z-50 w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-card p-6 shadow-lg data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
+		>
 		<!-- Header -->
 		<div class="mb-4">
-			<h2 id="dialog-title" class="text-lg font-semibold text-foreground">
+			<Dialog.Title id="dialog-title" class="text-lg font-semibold text-foreground">
 				Select Production Workflows
-			</h2>
-			<p id="dialog-description" class="mt-1 text-sm text-muted-foreground">
+			</Dialog.Title>
+			<Dialog.Description id="dialog-description" class="mt-1 text-sm text-muted-foreground">
 				Check the workflows that deploy to production. DORA metrics will only include these workflows.
-			</p>
+			</Dialog.Description>
 		</div>
 
 		<!-- Workflow List -->
@@ -138,5 +124,6 @@
 				</button>
 			</div>
 		</div>
-	</div>
-</div>
+		</Dialog.Content>
+	</Dialog.Portal>
+</Dialog.Root>

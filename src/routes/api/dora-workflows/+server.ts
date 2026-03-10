@@ -3,6 +3,19 @@ import type { RequestHandler } from './$types';
 import type { Database } from '$lib/types/database';
 
 type DoraWorkflowInsert = Database['public']['Tables']['dora_workflows']['Insert'];
+const UUID_REGEX =
+	/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function parseRepositoryId(input: unknown): string {
+	if (typeof input !== 'string' || input.trim().length === 0) {
+		throw error(400, 'Missing repository_id');
+	}
+	const repositoryId = input.trim();
+	if (!UUID_REGEX.test(repositoryId)) {
+		throw error(400, 'Invalid repository_id');
+	}
+	return repositoryId;
+}
 
 /**
  * GET /api/dora-workflows?repository_id=...
@@ -13,8 +26,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 	const { user } = await locals.safeGetSession();
 	if (!user) throw error(401, 'Unauthorized');
 
-	const repositoryId = url.searchParams.get('repository_id');
-	if (!repositoryId) throw error(400, 'Missing repository_id parameter');
+	const repositoryId = parseRepositoryId(url.searchParams.get('repository_id'));
 
 	const { data: workflows, error: dbError } = await locals.supabase
 		.from('dora_workflows')
@@ -46,15 +58,21 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	const { user } = await locals.safeGetSession();
 	if (!user) throw error(401, 'Unauthorized');
 
-	const body = await request.json();
+	let body: unknown;
+	try {
+		body = await request.json();
+	} catch {
+		throw error(400, 'Invalid request payload');
+	}
+	if (!body || typeof body !== 'object') {
+		throw error(400, 'Invalid request payload');
+	}
+
 	const { repository_id, workflows } = body as {
 		repository_id?: unknown;
 		workflows?: unknown;
 	};
-
-	if (typeof repository_id !== 'string' || repository_id.trim().length === 0) {
-		throw error(400, 'Missing repository_id');
-	}
+	const repository_id_validated = parseRepositoryId(repository_id);
 
 	if (!Array.isArray(workflows)) {
 		throw error(400, 'Missing or invalid workflows array');
@@ -88,18 +106,22 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	});
 
 	// Verify the repository belongs to the user
-	const { data: repo } = await locals.supabase
+	const { data: repo, error: repoQueryError } = await locals.supabase
 		.from('repositories')
 		.select('id')
-		.eq('id', repository_id)
+		.eq('id', repository_id_validated)
 		.eq('user_id', user.id)
-		.single();
+		.maybeSingle();
 
+	if (repoQueryError) {
+		console.error('Error checking repository ownership:', repoQueryError);
+		throw error(500, 'Failed to validate repository');
+	}
 	if (!repo) throw error(404, 'Repository not found');
 
 	const inserts: DoraWorkflowInsert[] = normalizedWorkflows.map((w) => ({
 		user_id: user.id,
-		repository_id,
+		repository_id: repository_id_validated,
 		workflow_id: w.workflow_id,
 		workflow_name: w.workflow_name,
 		workflow_path: w.workflow_path
@@ -124,7 +146,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		.from('dora_workflows')
 		.delete()
 		.eq('user_id', user.id)
-		.eq('repository_id', repository_id);
+		.eq('repository_id', repository_id_validated);
 
 	const { error: cleanupError } =
 		selectedWorkflowIds.length > 0

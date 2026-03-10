@@ -260,12 +260,16 @@
 		doraRefreshController = new AbortController();
 		const owner = data.selectedRepo.owner;
 		const name = data.selectedRepo.name;
+		const refreshController = doraRefreshController;
 		const result = await fetchDashboardData(
 			owner,
 			name,
 			dashboardData.timeWindowDays,
-			doraRefreshController.signal
+			refreshController.signal
 		);
+		if (refreshController.signal.aborted) return;
+		if (doraRefreshController !== refreshController) return;
+		if (data.selectedRepo.owner !== owner || data.selectedRepo.name !== name) return;
 		dashboardData = result.data;
 		isStale = result.isStale;
 	}
