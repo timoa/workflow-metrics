@@ -1,3 +1,13 @@
+## [0.1.17](https://github.com/timoa/workflow-metrics/compare/v0.1.16...v0.1.17) (2026-03-10)
+
+
+### Bug Fixes
+
+* **dora:** fix a few issues on DORA metrics [#37](https://github.com/timoa/workflow-metrics/issues/37) ([f59cb1d](https://github.com/timoa/workflow-metrics/commit/f59cb1d1531f8d76b7d5ec10f0705777ed02d638))
+* **dora:** fix issues on DORA ([a966d6a](https://github.com/timoa/workflow-metrics/commit/a966d6ab2b20949cc93faff6acce84ddadb3c5cb))
+* **dora:** fix typo ([d23ec96](https://github.com/timoa/workflow-metrics/commit/d23ec96d47c0b3835c04414ca1ed4686bb9725e5))
+* **dora:** select production workflows for DORA metrics [#37](https://github.com/timoa/workflow-metrics/issues/37) ([ef019d0](https://github.com/timoa/workflow-metrics/commit/ef019d0cb73ad02639ac6a1c87aa7013d5d79cc2))
+
 ## [0.1.16](https://github.com/timoa/workflow-metrics/compare/v0.1.15...v0.1.16) (2026-03-03)
 
 
