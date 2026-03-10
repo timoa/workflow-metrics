@@ -9,6 +9,7 @@
 	import MinutesTrendChart from '$lib/components/dashboard/MinutesTrendChart.svelte';
 	import RecentRuns from '$lib/components/dashboard/RecentRuns.svelte';
 	import WorkflowList from '$lib/components/dashboard/WorkflowList.svelte';
+	import DoraWorkflowDialog from '$lib/components/dashboard/DoraWorkflowDialog.svelte';
 	import { formatDuration, successRateColor, successRateBorderColor, failureRateColor, failureRateBorderColor } from '$lib/utils';
 
 	function formatMinutes(m: number): string {
@@ -29,6 +30,9 @@
 	// True when the data shown is stale (served from cache older than TTL)
 	let isStale = $state(false);
 	let errorMessage = $state<string | null>(null);
+
+	// DORA workflow dialog state
+	let showDoraDialog = $state(false);
 
 	// Progress state for the SSE loading bar (only used during cache-miss fetches)
 	type LoadPhase = 'connecting' | 'fetching' | 'computing' | null;
@@ -226,6 +230,38 @@
 		}
 	}
 
+	async function handleSaveDoraWorkflows(selectedIds: number[]) {
+		if (!dashboardData) return;
+
+		const workflows = dashboardData.workflowMetrics
+			.filter((w) => selectedIds.includes(w.workflowId))
+			.map((w) => ({
+				workflow_id: w.workflowId,
+				workflow_name: w.workflowName,
+				workflow_path: w.workflowPath
+			}));
+
+		const response = await fetch('/api/dora-workflows', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				repository_id: data.selectedRepo.id,
+				workflows
+			})
+		});
+
+		if (!response.ok) {
+			throw new Error('Failed to save DORA workflow selection');
+		}
+
+		// Refresh dashboard data to get updated DORA metrics
+		const owner = data.selectedRepo.owner;
+		const name = data.selectedRepo.name;
+		const result = await fetchDashboardData(owner, name, dashboardData.timeWindowDays, new AbortController().signal);
+		dashboardData = result.data;
+		isStale = result.isStale;
+	}
+
 	const timeWindowLabel = $derived(
 		backgroundLoading
 			? 'Last 7 days'
@@ -289,6 +325,20 @@
 					</svg>
 				</span>
 			</div>
+			{#if dashboardData}
+				<button
+					type="button"
+					onclick={() => showDoraDialog = true}
+					class="rounded-lg p-2 text-muted-foreground hover:text-foreground hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
+					aria-label="Configure DORA workflows"
+					title="Configure DORA workflows"
+				>
+					<svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+						<circle cx="12" cy="12" r="3" />
+					</svg>
+				</button>
+			{/if}
 		</div>
 	</div>
 
@@ -438,6 +488,18 @@
 							Loading 30-day…
 						</span>
 					{/if}
+					<button
+						type="button"
+						onclick={() => showDoraDialog = true}
+						class="rounded-full p-1 text-muted-foreground hover:text-foreground hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
+						aria-label="Configure DORA workflows"
+						title="Configure DORA workflows"
+					>
+						<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+							<circle cx="12" cy="12" r="3" />
+						</svg>
+					</button>
 					<span class="group relative inline-flex flex-shrink-0">
 						<button
 							type="button"
@@ -457,6 +519,24 @@
 						</span>
 					</span>
 				</div>
+				{#if !dashboardData.hasDoraWorkflowsSelected}
+					<div class="rounded-lg border border-dashed border-border bg-card p-6 text-center">
+						<p class="text-sm text-muted-foreground mb-3">
+							Please select production workflows to view accurate DORA metrics.
+						</p>
+						<button
+							type="button"
+							onclick={() => showDoraDialog = true}
+							class="inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-foreground bg-secondary hover:bg-secondary/80 focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
+						>
+							<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+								<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+								<circle cx="12" cy="12" r="3" />
+							</svg>
+							Configure Production Workflows
+						</button>
+					</div>
+				{:else}
 				<div class="flex flex-wrap gap-4">
 					<MetricCard
 						class="min-w-[140px] flex-1 border-l-4 border-l-indigo-500"
@@ -496,6 +576,7 @@
 						icon='<svg class="size-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>'
 					/>
 				</div>
+				{/if}
 			</div>
 		{/if}
 
@@ -736,6 +817,17 @@
 		/>
 	{/if}
 </div>
+
+<!-- DORA Workflow Selection Dialog -->
+{#if showDoraDialog && dashboardData}
+	<DoraWorkflowDialog
+		workflows={dashboardData.workflowMetrics}
+		selectedIds={dashboardData.doraWorkflowIds}
+		repositoryId={data.selectedRepo.id}
+		onSave={handleSaveDoraWorkflows}
+		onClose={() => showDoraDialog = false}
+	/>
+{/if}
 
 <style>
 	@keyframes shimmer {

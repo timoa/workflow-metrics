@@ -93,6 +93,30 @@ export interface Database {
 					updated_at?: string;
 				};
 			};
+			dora_workflows: {
+				Row: {
+					id: string;
+					user_id: string;
+					repository_id: string;
+					workflow_id: number;
+					workflow_name: string;
+					workflow_path: string;
+					created_at: string;
+				};
+				Insert: {
+					id?: string;
+					user_id: string;
+					repository_id: string;
+					workflow_id: number;
+					workflow_name: string;
+					workflow_path: string;
+					created_at?: string;
+				};
+				Update: {
+					workflow_name?: string;
+					workflow_path?: string;
+				};
+			};
 		};
 		Views: Record<string, never>;
 		Functions: Record<string, never>;

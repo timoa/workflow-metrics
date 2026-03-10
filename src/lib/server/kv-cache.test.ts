@@ -23,7 +23,9 @@ describe('getKvDashboardData', () => {
 		wastedMinutes: 50,
 		topBranchByMinutes: null,
 		totalSkipped: 5,
-		skipRate: 5
+		skipRate: 5,
+		doraWorkflowIds: [],
+		hasDoraWorkflowsSelected: false
 	};
 
 	it('returns cached data when found', async () => {
@@ -156,7 +158,9 @@ describe('setKvDashboardData', () => {
 		wastedMinutes: 50,
 		topBranchByMinutes: null,
 		totalSkipped: 5,
-		skipRate: 5
+		skipRate: 5,
+		doraWorkflowIds: [],
+		hasDoraWorkflowsSelected: false
 	};
 
 	it('stores data with correct TTL', async () => {
