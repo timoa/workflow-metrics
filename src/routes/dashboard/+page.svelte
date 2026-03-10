@@ -840,7 +840,7 @@
 {#if showDoraDialog && dashboardData}
 	<DoraWorkflowDialog
 		workflows={dashboardData.workflowMetrics}
-		selectedIds={dashboardData.doraWorkflowIds}
+		selectedIds={dashboardData.doraWorkflowIds ?? []}
 		onSave={handleSaveDoraWorkflows}
 		onClose={() => showDoraDialog = false}
 	/>

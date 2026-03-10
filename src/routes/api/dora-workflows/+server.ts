@@ -64,7 +64,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	} catch {
 		throw error(400, 'Invalid request payload');
 	}
-	if (!body || typeof body !== 'object') {
+	if (!body || typeof body !== 'object' || Array.isArray(body)) {
 		throw error(400, 'Invalid request payload');
 	}
 
