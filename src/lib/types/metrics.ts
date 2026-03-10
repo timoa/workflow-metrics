@@ -149,6 +149,10 @@ export interface DashboardData {
 	totalSkipped: number;
 	/** Skip rate: skipped / completed runs (0–100). */
 	skipRate: number;
+	/** Workflow IDs selected for DORA metrics calculation. Empty array means no selection made. */
+	doraWorkflowIds: number[];
+	/** True if user has selected specific workflows for DORA metrics; false if no selection. */
+	hasDoraWorkflowsSelected: boolean;
 }
 
 export interface RecentRun {

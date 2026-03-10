@@ -45,6 +45,35 @@ export const GET: RequestHandler = async ({ url, locals, request, platform }) =>
 
 	if (!connection) throw error(401, 'GitHub connection not found');
 
+	// Fetch the repository to get its ID
+	const { data: repository } = await locals.supabase
+		.from('repositories')
+		.select('id')
+		.eq('user_id', user.id)
+		.eq('owner', owner)
+		.eq('name', repo)
+		.single();
+
+	// Fetch DORA workflow selections for this repository
+	// undefined = feature not initialized (always empty, show prompt)
+	// [] = user cleared all selections (show prompt)
+	// [1,2,3] = user selected workflows (filter metrics)
+	let doraWorkflowIds: number[] | undefined = undefined;
+	if (repository) {
+		const { data: doraWorkflows } = await locals.supabase
+			.from('dora_workflows')
+			.select('workflow_id')
+			.eq('user_id', user.id)
+			.eq('repository_id', repository.id);
+
+		// If query succeeded (even if empty), set to empty array to show this is initialized
+		if (doraWorkflows !== null) {
+			doraWorkflowIds = doraWorkflows.length > 0 
+				? doraWorkflows.map((w) => w.workflow_id)
+				: [];
+		}
+	}
+
 	const windowStart = (() => {
 		const d = new Date();
 		d.setDate(d.getDate() - days);
@@ -66,7 +95,8 @@ export const GET: RequestHandler = async ({ url, locals, request, platform }) =>
 		try {
 			const dashboardData = await buildDashboardData(octokit, owner, repo, {
 				cachedRuns: cachedResult.runs,
-				days
+				days,
+				doraWorkflowIds
 			});
 			return json(dashboardData);
 		} catch (e: unknown) {
@@ -80,7 +110,8 @@ export const GET: RequestHandler = async ({ url, locals, request, platform }) =>
 		try {
 			const staleData = await buildDashboardData(octokit, owner, repo, {
 				cachedRuns: cachedResult.runs,
-				days
+				days,
+				doraWorkflowIds
 			});
 			staleResponseData = json(staleData, {
 				headers: { 'X-Data-Stale': 'true' }
@@ -96,6 +127,7 @@ export const GET: RequestHandler = async ({ url, locals, request, platform }) =>
 				const supabaseForWrite = admin ?? locals.supabase;
 				await buildDashboardData(octokit, owner, repo, {
 					days,
+					doraWorkflowIds,
 					onRunsFetched: async (runs) => {
 						await setCachedWorkflowRuns(
 							supabaseForWrite,
@@ -127,7 +159,7 @@ export const GET: RequestHandler = async ({ url, locals, request, platform }) =>
 	const acceptsSSE = request.headers.get('Accept') === 'text/event-stream';
 
 	if (acceptsSSE) {
-		return streamDashboardData(octokit, owner, repo, days, windowStart, user.id, locals);
+		return streamDashboardData(octokit, owner, repo, days, windowStart, user.id, locals, doraWorkflowIds);
 	}
 
 	// Plain JSON fallback (no SSE support, or client didn't request it)
@@ -137,6 +169,7 @@ export const GET: RequestHandler = async ({ url, locals, request, platform }) =>
 
 		const dashboardData = await buildDashboardData(octokit, owner, repo, {
 			days,
+			doraWorkflowIds,
 			onRunsFetched: async (runs) => {
 				try {
 					await setCachedWorkflowRuns(supabaseForWrite, user.id, owner, repo, windowStart, runs);
@@ -172,7 +205,8 @@ function streamDashboardData(
 	days: number,
 	windowStart: string,
 	userId: string,
-	locals: App.Locals
+	locals: App.Locals,
+	doraWorkflowIds?: number[]
 ): Response {
 	const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
 	const writer = writable.getWriter();
@@ -189,6 +223,7 @@ function streamDashboardData(
 
 			const dashboardData = await buildDashboardData(octokit, owner, repo, {
 				days,
+				doraWorkflowIds,
 				onProgress: (fetched, total, page) => {
 					write({
 						event: 'progress',

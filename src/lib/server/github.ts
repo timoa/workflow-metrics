@@ -296,8 +296,13 @@ function buildRunTrend(runs: GitHubWorkflowRun[], days = 30): RunDataPoint[] {
 
 const DAYS_WINDOW = 30;
 
-function computeDoraMetrics(runs: GitHubWorkflowRun[]): DoraMetrics {
-	const completed = runs.filter((r) => r.status === 'completed');
+function computeDoraMetrics(runs: GitHubWorkflowRun[], doraWorkflowIds?: number[]): DoraMetrics {
+	// Filter runs to only DORA workflows if specified
+	const filteredRuns = doraWorkflowIds && doraWorkflowIds.length > 0
+		? runs.filter(r => doraWorkflowIds.includes(r.workflow_id))
+		: runs;
+
+	const completed = filteredRuns.filter((r) => r.status === 'completed');
 	const successCount = completed.filter((r) => r.conclusion === 'success').length;
 	const failureCount = completed.filter((r) => r.conclusion === 'failure').length;
 	const successOrFailure = completed.filter(
@@ -734,6 +739,8 @@ export interface BuildDashboardDataOptions {
 	days?: number;
 	/** Called after each paginated page when fetching from GitHub. Useful for streaming progress. */
 	onProgress?: ProgressCallback;
+	/** Workflow IDs to include in DORA metrics calculation. When provided, only these workflows are used. */
+	doraWorkflowIds?: number[];
 }
 
 export async function buildDashboardData(
@@ -742,7 +749,7 @@ export async function buildDashboardData(
 	repo: string,
 	options?: BuildDashboardDataOptions
 ): Promise<DashboardData> {
-	const { onTiming, cachedRuns, onRunsFetched, onProgress, days = 30 } = options ?? {};
+	const { onTiming, cachedRuns, onRunsFetched, onProgress, days = 30, doraWorkflowIds } = options ?? {};
 	const now = typeof performance !== 'undefined' ? () => performance.now() : () => 0;
 	const timing = (label: string, ms: number, meta?: Record<string, number>) => {
 		onTiming?.(label, ms, meta);
@@ -806,7 +813,7 @@ export async function buildDashboardData(
 	timing('compute: runsToRecentRuns', now() - recentStart);
 
 	const doraStart = now();
-	const dora = computeDoraMetrics(runs);
+	const dora = computeDoraMetrics(runs, doraWorkflowIds);
 	timing('compute: computeDoraMetrics', now() - doraStart, { runs: runs.length });
 
 	const runnerInfoStart = now();
@@ -854,6 +861,8 @@ export async function buildDashboardData(
 		workflowFileCommits,
 		dora,
 		timeWindowDays: days,
+		doraWorkflowIds: doraWorkflowIds ?? [],
+		hasDoraWorkflowsSelected: doraWorkflowIds != null && doraWorkflowIds.length > 0,
 		...minutesMetrics
 	};
 }
