@@ -5,7 +5,6 @@
 	interface Props {
 		workflows: WorkflowMetrics[];
 		selectedIds: number[];
-		repositoryId: string;
 		onSave: (ids: number[]) => Promise<void>;
 		onClose: () => void;
 	}
@@ -56,7 +55,7 @@
 	class="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm"
 	transition:fade={{ duration: 150 }}
 	onclick={handleBackdropClick}
-	role="button"
+	role="presentation"
 	tabindex="-1"
 >
 	<!-- Dialog -->

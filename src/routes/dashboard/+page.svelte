@@ -33,6 +33,7 @@
 
 	// DORA workflow dialog state
 	let showDoraDialog = $state(false);
+	let doraRefreshController: AbortController | null = null;
 
 	// Progress state for the SSE loading bar (only used during cache-miss fetches)
 	type LoadPhase = 'connecting' | 'fetching' | 'computing' | null;
@@ -255,12 +256,25 @@
 		}
 
 		// Refresh dashboard data to get updated DORA metrics
+		doraRefreshController?.abort();
+		doraRefreshController = new AbortController();
 		const owner = data.selectedRepo.owner;
 		const name = data.selectedRepo.name;
-		const result = await fetchDashboardData(owner, name, dashboardData.timeWindowDays, new AbortController().signal);
+		const result = await fetchDashboardData(
+			owner,
+			name,
+			dashboardData.timeWindowDays,
+			doraRefreshController.signal
+		);
 		dashboardData = result.data;
 		isStale = result.isStale;
 	}
+
+	$effect(() => {
+		return () => {
+			doraRefreshController?.abort();
+		};
+	});
 
 	const timeWindowLabel = $derived(
 		backgroundLoading
@@ -823,7 +837,6 @@
 	<DoraWorkflowDialog
 		workflows={dashboardData.workflowMetrics}
 		selectedIds={dashboardData.doraWorkflowIds}
-		repositoryId={data.selectedRepo.id}
 		onSave={handleSaveDoraWorkflows}
 		onClose={() => showDoraDialog = false}
 	/>

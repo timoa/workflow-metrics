@@ -48,12 +48,44 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 	const body = await request.json();
 	const { repository_id, workflows } = body as {
-		repository_id?: string;
-		workflows?: Array<{ workflow_id: number; workflow_name: string; workflow_path: string }>;
+		repository_id?: unknown;
+		workflows?: unknown;
 	};
 
-	if (!repository_id) throw error(400, 'Missing repository_id');
-	if (!workflows || !Array.isArray(workflows)) throw error(400, 'Missing or invalid workflows array');
+	if (typeof repository_id !== 'string' || repository_id.trim().length === 0) {
+		throw error(400, 'Missing repository_id');
+	}
+
+	if (!Array.isArray(workflows)) {
+		throw error(400, 'Missing or invalid workflows array');
+	}
+
+	const normalizedWorkflows = workflows.map((item) => {
+		if (!item || typeof item !== 'object') {
+			throw error(400, 'Missing or invalid workflows array/item');
+		}
+
+		const candidate = item as {
+			workflow_id?: unknown;
+			workflow_name?: unknown;
+			workflow_path?: unknown;
+		};
+		const workflowId = Number(candidate.workflow_id);
+		const workflowName =
+			typeof candidate.workflow_name === 'string' ? candidate.workflow_name.trim() : '';
+		const workflowPath =
+			typeof candidate.workflow_path === 'string' ? candidate.workflow_path.trim() : '';
+
+		if (!Number.isFinite(workflowId) || workflowName.length === 0 || workflowPath.length === 0) {
+			throw error(400, 'Missing or invalid workflows array/item');
+		}
+
+		return {
+			workflow_id: workflowId,
+			workflow_name: workflowName,
+			workflow_path: workflowPath
+		};
+	});
 
 	// Verify the repository belongs to the user
 	const { data: repo } = await locals.supabase
@@ -65,25 +97,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 	if (!repo) throw error(404, 'Repository not found');
 
-	// Delete existing DORA workflow selections for this repository
-	const { error: deleteError } = await locals.supabase
-		.from('dora_workflows')
-		.delete()
-		.eq('user_id', user.id)
-		.eq('repository_id', repository_id);
-
-	if (deleteError) {
-		console.error('Error deleting existing DORA workflows:', deleteError);
-		throw error(500, 'Failed to delete existing DORA workflows');
-	}
-
-	// If workflows array is empty, we're done (user cleared all selections)
-	if (workflows.length === 0) {
-		return json({ success: true, count: 0 });
-	}
-
-	// Insert new selections
-	const inserts: DoraWorkflowInsert[] = workflows.map((w) => ({
+	const inserts: DoraWorkflowInsert[] = normalizedWorkflows.map((w) => ({
 		user_id: user.id,
 		repository_id,
 		workflow_id: w.workflow_id,
@@ -91,15 +105,36 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		workflow_path: w.workflow_path
 	}));
 
-	const { data: inserted, error: insertError } = await locals.supabase
-		.from('dora_workflows')
-		.insert(inserts)
-		.select();
+	let finalCount = 0;
+	if (inserts.length > 0) {
+		const { data: upserted, error: upsertError } = await locals.supabase
+			.from('dora_workflows')
+			.upsert(inserts, { onConflict: 'user_id,repository_id,workflow_id' })
+			.select();
 
-	if (insertError) {
-		console.error('Error inserting DORA workflows:', insertError);
-		throw error(500, 'Failed to save DORA workflows');
+		if (upsertError) {
+			console.error('Error upserting DORA workflows:', upsertError);
+			throw error(500, 'Failed to save DORA workflows');
+		}
+		finalCount = upserted?.length ?? 0;
 	}
 
-	return json({ success: true, count: inserted?.length ?? 0 });
+	const selectedWorkflowIds = inserts.map((w) => w.workflow_id);
+	const cleanupQuery = locals.supabase
+		.from('dora_workflows')
+		.delete()
+		.eq('user_id', user.id)
+		.eq('repository_id', repository_id);
+
+	const { error: cleanupError } =
+		selectedWorkflowIds.length > 0
+			? await cleanupQuery.not('workflow_id', 'in', `(${selectedWorkflowIds.join(',')})`)
+			: await cleanupQuery;
+
+	if (cleanupError) {
+		console.error('Error deleting stale DORA workflows:', cleanupError);
+		throw error(500, 'Failed to clean up DORA workflows');
+	}
+
+	return json({ success: true, count: finalCount });
 };
