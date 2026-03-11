@@ -58,7 +58,12 @@ export async function fetchWorkflows(
 	repo: string
 ): Promise<GitHubWorkflow[]> {
 	const { data } = await octokit.rest.actions.listRepoWorkflows({ owner, repo, per_page: 100 });
-	return data.workflows as GitHubWorkflow[];
+	return (data.workflows as GitHubWorkflow[]).filter((workflow) => !isReusableWorkflow(workflow));
+}
+
+function isReusableWorkflow(workflow: GitHubWorkflow): boolean {
+	const fileName = workflow.path.split('/').pop() ?? '';
+	return fileName.startsWith('_');
 }
 
 export async function fetchWorkflowRuns(
@@ -799,6 +804,9 @@ export async function buildDashboardData(
 		timing('GitHub: Promise.all(workflows, runs, commits)', now() - parallelStart);
 		await onRunsFetched?.(runs);
 	}
+
+	const visibleWorkflowIds = new Set(workflows.map((workflow) => workflow.id));
+	runs = runs.filter((run) => visibleWorkflowIds.has(run.workflow_id));
 
 	const computeStart = now();
 	const workflowMetrics = workflows.map((w) => computeWorkflowMetrics(w, runs));
