@@ -75,9 +75,21 @@ describe('isGitHubUnauthorizedError', () => {
 });
 
 describe('fetchWorkflows', () => {
-	it('fetches workflows from GitHub API', async () => {
+	it('filters out reusable workflows and returns only non-reusable workflows', async () => {
 		const mockWorkflows: GitHubWorkflow[] = [
-			{ id: 1, name: 'CI', path: '.github/workflows/ci.yml', state: 'active' } as GitHubWorkflow
+			{ id: 1, name: 'CI', path: '.github/workflows/ci.yml', state: 'active' } as GitHubWorkflow,
+			{
+				id: 2,
+				name: '_Reusable Deploy',
+				path: '.github/workflows/_deploy.yml',
+				state: 'active'
+			} as GitHubWorkflow,
+			{
+				id: 3,
+				name: 'Test',
+				path: '.github/workflows/test.yml',
+				state: 'active'
+			} as GitHubWorkflow
 		];
 		const octokit = createOctokit('test-token');
 		vi.mocked(octokit.rest.actions.listRepoWorkflows).mockResolvedValue({
@@ -85,7 +97,32 @@ describe('fetchWorkflows', () => {
 		} as never);
 
 		const result = await fetchWorkflows(octokit, 'owner', 'repo');
-		expect(result).toEqual(mockWorkflows);
+		expect(result.map((workflow) => workflow.id)).toEqual([1, 3]);
+		expect(result.every((workflow) => !workflow.path.split('/').pop()?.startsWith('_'))).toBe(true);
+	});
+
+	it('returns an empty array when all workflows are reusable', async () => {
+		const mockWorkflows: GitHubWorkflow[] = [
+			{
+				id: 10,
+				name: '_Reusable A',
+				path: '.github/workflows/_reusable-a.yml',
+				state: 'active'
+			} as GitHubWorkflow,
+			{
+				id: 11,
+				name: '_Reusable B',
+				path: '.github/workflows/_reusable-b.yml',
+				state: 'active'
+			} as GitHubWorkflow
+		];
+		const octokit = createOctokit('test-token');
+		vi.mocked(octokit.rest.actions.listRepoWorkflows).mockResolvedValue({
+			data: { workflows: mockWorkflows }
+		} as never);
+
+		const result = await fetchWorkflows(octokit, 'owner', 'repo');
+		expect(result).toEqual([]);
 	});
 });
 
@@ -278,6 +315,55 @@ describe('fetchWorkflowFileCommits', () => {
 });
 
 describe('buildDashboardData', () => {
+	it('excludes reusable workflows (prefixed with _) from all dashboard metrics', async () => {
+		const octokit = createOctokit('test-token');
+		const mockWorkflows: GitHubWorkflow[] = [
+			{ id: 1, name: 'CI', path: '.github/workflows/ci.yml', state: 'active' } as GitHubWorkflow,
+			{
+				id: 2,
+				name: 'Reusable Deploy',
+				path: '.github/workflows/_deploy.yml',
+				state: 'active'
+			} as GitHubWorkflow
+		];
+		const mockRuns: GitHubWorkflowRun[] = [
+			{
+				id: 1,
+				workflow_id: 1,
+				status: 'completed',
+				conclusion: 'success',
+				updated_at: new Date().toISOString(),
+				run_started_at: new Date(Date.now() - 60_000).toISOString()
+			} as GitHubWorkflowRun,
+			{
+				id: 2,
+				workflow_id: 2,
+				status: 'completed',
+				conclusion: 'success',
+				updated_at: new Date().toISOString(),
+				run_started_at: new Date(Date.now() - 30_000).toISOString()
+			} as GitHubWorkflowRun
+		];
+
+		vi.mocked(octokit.rest.actions.listRepoWorkflows).mockResolvedValue({
+			data: { workflows: mockWorkflows }
+		} as never);
+		vi.mocked(octokit.rest.actions.listWorkflowRunsForRepo).mockResolvedValue({
+			data: { workflow_runs: mockRuns, total_count: 2 }
+		} as never);
+		vi.mocked(octokit.rest.repos.listCommits).mockResolvedValue({ data: [] } as never);
+		vi.mocked(octokit.rest.repos.getContent).mockResolvedValue({
+			data: { type: 'file', content: 'bmFtZTogQ0k=' }
+		} as never);
+
+		const result = await buildDashboardData(octokit, 'owner', 'repo', { days: 7 });
+
+		expect(result.workflowMetrics).toHaveLength(1);
+		expect(result.workflowMetrics[0].workflowId).toBe(1);
+		expect(result.activeWorkflows).toBe(1);
+		expect(result.totalRuns).toBe(1);
+	});
+
 	it('builds dashboard data from GitHub data', async () => {
 		const octokit = createOctokit('test-token');
 		const mockWorkflows: GitHubWorkflow[] = [
