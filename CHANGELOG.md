@@ -1,3 +1,11 @@
+## [0.1.18](https://github.com/timoa/workflow-metrics/compare/v0.1.17...v0.1.18) (2026-03-11)
+
+
+### Bug Fixes
+
+* **workflow:** add missing test cases [#29](https://github.com/timoa/workflow-metrics/issues/29) ([8986057](https://github.com/timoa/workflow-metrics/commit/898605767cff9ba9edb279ef0f69696129a1c7d8))
+* **workflow:** hide the reusable workflows from the metrics [#29](https://github.com/timoa/workflow-metrics/issues/29) ([33a831a](https://github.com/timoa/workflow-metrics/commit/33a831aa5bc85f751f157e511edd617edc23fa8a))
+
 ## [0.1.17](https://github.com/timoa/workflow-metrics/compare/v0.1.16...v0.1.17) (2026-03-10)
 
 
