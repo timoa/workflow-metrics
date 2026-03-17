@@ -1,4 +1,4 @@
-name = "workflow-metrics"
+name = "workflow-metrics" # ← Change it to your own app name 
 compatibility_date = "2024-12-01"
 compatibility_flags = ["nodejs_als"]
 pages_build_output_dir = ".svelte-kit/cloudflare"
