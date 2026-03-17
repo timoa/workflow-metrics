@@ -126,7 +126,8 @@ const AppConfigOverrideSchema = z.object({
 const localOverrideModules = import.meta.glob<{ default: AppConfigOverride }>('./app-config.local.ts', {
 	eager: true
 });
-const rawLocalOverride = localOverrideModules['./app-config.local.ts']?.default ?? {};
+const localOverrideModule = localOverrideModules['./app-config.local.ts'];
+const rawLocalOverride = localOverrideModule ? localOverrideModule.default : {};
 const localOverrideResult = AppConfigOverrideSchema.safeParse(rawLocalOverride);
 if (!localOverrideResult.success) {
 	const issues = localOverrideResult.error.issues
