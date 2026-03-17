@@ -18,7 +18,7 @@ vi.mock('ai', () => ({
 import { createMistralClient, buildOptimizationPrompt, generateOptimizationReport, generateOptimizedYaml } from './mistral';
 import { generateText } from 'ai';
 import type { WorkflowMetrics } from '$lib/types/metrics';
-import { defaultAppConfig } from '$lib/server/config/app-config';
+import { resolvedAppConfig } from '$lib/server/config/app-config';
 
 describe('createMistralClient', () => {
 	it('creates a Mistral client with API key', () => {
@@ -210,7 +210,7 @@ jobs:
 			})
 		);
 		expect(vi.mocked(generateText).mock.calls[0][0].model).toEqual(
-			expect.objectContaining({ __modelId: defaultAppConfig.aiOptimization.defaultModel })
+			expect.objectContaining({ __modelId: resolvedAppConfig.aiOptimization.defaultModel })
 		);
 	});
 });
@@ -325,7 +325,7 @@ jobs:
 			})
 		);
 		expect(vi.mocked(generateText).mock.calls[0][0].model).toEqual(
-			expect.objectContaining({ __modelId: defaultAppConfig.aiOptimization.defaultModel })
+			expect.objectContaining({ __modelId: resolvedAppConfig.aiOptimization.defaultModel })
 		);
 	});
 });

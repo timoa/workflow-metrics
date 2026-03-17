@@ -1,6 +1,4 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { defaultAppConfig } from './app-config';
-
 async function importFreshConfigModule(aiModelOverride?: string) {
 	vi.resetModules();
 	vi.doMock('$env/dynamic/private', () => ({
@@ -20,7 +18,7 @@ describe('app config', () => {
 	it('returns default AI optimization model when no override exists', async () => {
 		const config = await importFreshConfigModule();
 
-		expect(config.getAiOptimizationModel()).toBe(defaultAppConfig.aiOptimization.defaultModel);
+		expect(config.getAiOptimizationModel()).toBe(config.defaultAppConfig.aiOptimization.defaultModel);
 	});
 
 	it('uses AI model from environment override', async () => {
@@ -37,5 +35,16 @@ describe('app config', () => {
 
 	it('throws when environment override model is invalid', async () => {
 		await expect(importFreshConfigModule('invalid-model')).rejects.toThrow('Invalid app config');
+	});
+
+	it('does not share mutable references with default config', async () => {
+		const config = await importFreshConfigModule();
+
+		expect(config.resolvedAppConfig.aiOptimization.modelLabels).not.toBe(
+			config.defaultAppConfig.aiOptimization.modelLabels
+		);
+		expect(config.resolvedAppConfig.aiOptimization.providers.mistral.models).not.toBe(
+			config.defaultAppConfig.aiOptimization.providers.mistral.models
+		);
 	});
 });

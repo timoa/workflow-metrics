@@ -153,8 +153,8 @@ function normalizeModelLabels(
 	base: Record<string, string>,
 	override?: Record<string, string | undefined>
 ): Record<string, string> {
-	if (!override) return base;
 	const normalized: Record<string, string> = { ...base };
+	if (!override) return normalized;
 	for (const [key, value] of Object.entries(override)) {
 		if (typeof value === 'string' && value.length > 0) {
 			normalized[key] = value;
@@ -192,9 +192,10 @@ function resolveConfig(
 				mistral: {
 					...defaults.aiOptimization.providers.mistral,
 					...override.aiOptimization?.providers?.mistral,
-					models:
-						override.aiOptimization?.providers?.mistral?.models ??
-						defaults.aiOptimization.providers.mistral.models
+					models: [
+						...(override.aiOptimization?.providers?.mistral?.models ??
+							defaults.aiOptimization.providers.mistral.models)
+					]
 				}
 			}
 		}
