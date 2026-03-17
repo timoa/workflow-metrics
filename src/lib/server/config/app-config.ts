@@ -88,18 +88,21 @@ const AppConfigSchema = z
 		}
 	});
 
-const AppConfigOverrideSchema = z.object({
+export const AppConfigOverrideSchema = z
+	.object({
 	app: z
 		.object({
 			name: z.string().min(1).optional(),
 			version: z.number().int().positive().optional()
 		})
+		.strict()
 		.partial()
 		.optional(),
 	features: z
 		.object({
 			aiOptimization: z.boolean().optional()
 		})
+		.strict()
 		.partial()
 		.optional(),
 	aiOptimization: z
@@ -113,15 +116,19 @@ const AppConfigOverrideSchema = z.object({
 						.object({
 							models: z.array(z.string().min(1)).min(1).optional()
 						})
+						.strict()
 						.partial()
 						.optional()
 				})
+				.strict()
 				.partial()
 				.optional()
 		})
+		.strict()
 		.partial()
 		.optional()
-});
+	})
+	.strict();
 
 const localOverrideModules = import.meta.glob<{ default: AppConfigOverride }>('./app-config.local.ts', {
 	eager: true
@@ -212,7 +219,9 @@ const mergedConfig = resolveConfig(defaultAppConfig, localOverride, buildEnvOver
 
 const parsedConfig = AppConfigSchema.safeParse(mergedConfig);
 if (!parsedConfig.success) {
-	const issues = parsedConfig.error.issues.map((issue) => issue.message).join('; ');
+	const issues = parsedConfig.error.issues
+		.map((issue) => `${issue.path.join('.') || '<root>'}: ${issue.message}`)
+		.join('; ');
 	throw new Error(`Invalid app config: ${issues}`);
 }
 

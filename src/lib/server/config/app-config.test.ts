@@ -10,7 +10,7 @@ async function importFreshConfigModule(aiModelOverride?: string) {
 }
 
 describe('app config', () => {
-	afterEach(() => {
+	afterEach(async () => {
 		vi.doUnmock('$env/dynamic/private');
 		vi.resetModules();
 	});
@@ -34,7 +34,21 @@ describe('app config', () => {
 	});
 
 	it('throws when environment override model is invalid', async () => {
-		await expect(importFreshConfigModule('invalid-model')).rejects.toThrow('Invalid app config');
+		await expect(importFreshConfigModule('invalid-model')).rejects.toThrow(
+			'aiOptimization.defaultModel'
+		);
+	});
+
+	it('throws when local override contains unknown keys', async () => {
+		const config = await importFreshConfigModule();
+		const result = config.AppConfigOverrideSchema.safeParse({
+			app: {
+				name: 'workflow-metrics',
+				unknownField: 'invalid'
+			}
+		});
+
+		expect(result.success).toBe(false);
 	});
 
 	it('does not share mutable references with default config', async () => {
