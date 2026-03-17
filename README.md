@@ -182,6 +182,33 @@ GITHUB_APP_SLUG=your-github-app-slug
 | `GITHUB_APP_PRIVATE_KEY` | Yes | RSA private key from GitHub App settings (full PEM, newlines as `\n`) |
 | `GITHUB_APP_SLUG` | Yes | URL slug of your GitHub App (e.g. `workflow-metrics-bot`) |
 
+### 5.1 App-wide developer config
+
+The app also supports a typed server-side config file for developer customization.
+
+- Defaults live in `src/lib/server/config/app-config.ts`
+- Local machine overrides live in `src/lib/server/config/app-config.local.ts` (gitignored)
+- Start from `src/lib/server/config/app-config.local.example.ts`
+- Optional env override for AI model: `AI_OPTIMIZATION_MODEL`
+
+Current configurable section:
+
+- `aiOptimization` - choose provider/model used by AI optimization
+
+Example local override:
+
+```ts
+import type { AppConfigOverride } from '$lib/server/config/app-config';
+
+const localConfig: AppConfigOverride = {
+	aiOptimization: {
+		defaultModel: 'mistral-medium-latest'
+	}
+};
+
+export default localConfig;
+```
+
 ### 6. Run locally
 
 ```bash

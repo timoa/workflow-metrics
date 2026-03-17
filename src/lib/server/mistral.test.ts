@@ -2,7 +2,9 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 // Mock the AI SDK before any imports
 vi.mock('@ai-sdk/mistral', () => ({
-	createMistral: vi.fn().mockReturnValue(vi.fn().mockReturnValue({ __model: true }))
+	createMistral: vi.fn().mockReturnValue(
+		vi.fn().mockImplementation((modelId: string) => ({ __model: true, __modelId: modelId }))
+	)
 }));
 
 vi.mock('ai', () => ({
@@ -16,6 +18,7 @@ vi.mock('ai', () => ({
 import { createMistralClient, buildOptimizationPrompt, generateOptimizationReport, generateOptimizedYaml } from './mistral';
 import { generateText } from 'ai';
 import type { WorkflowMetrics } from '$lib/types/metrics';
+import { resolvedAppConfig } from '$lib/server/config/app-config';
 
 describe('createMistralClient', () => {
 	it('creates a Mistral client with API key', () => {
@@ -206,6 +209,9 @@ jobs:
 				maxOutputTokens: 4096
 			})
 		);
+		expect(vi.mocked(generateText).mock.calls[0][0].model).toEqual(
+			expect.objectContaining({ __modelId: resolvedAppConfig.aiOptimization.defaultModel })
+		);
 	});
 });
 
@@ -317,6 +323,9 @@ jobs:
 				prompt: expect.stringContaining('Original YAML'),
 				maxOutputTokens: 4096
 			})
+		);
+		expect(vi.mocked(generateText).mock.calls[0][0].model).toEqual(
+			expect.objectContaining({ __modelId: resolvedAppConfig.aiOptimization.defaultModel })
 		);
 	});
 });

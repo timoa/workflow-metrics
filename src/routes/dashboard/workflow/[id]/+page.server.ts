@@ -1,6 +1,7 @@
 import { redirect, error } from '@sveltejs/kit';
 import { createOctokit, buildWorkflowDetailData, isGitHubUnauthorizedError } from '$lib/server/github';
 import { createSupabaseAdminClient } from '$lib/server/supabase';
+import { getAiOptimizationModelLabel } from '$lib/server/config/app-config';
 import {
 	getCachedWorkflowDetailRuns,
 	setCachedWorkflowDetailRuns
@@ -63,6 +64,15 @@ export const load: PageServerLoad = async ({ locals, url, params }) => {
 	const octokit = createOctokit(connection.access_token);
 
 	try {
+		let aiModelLabel = 'AI';
+		if (hasMistralKey) {
+			try {
+				aiModelLabel = getAiOptimizationModelLabel();
+			} catch (e) {
+				console.warn('[workflow-detail] Could not resolve AI model label from config:', e);
+			}
+		}
+
 		const detailData = await buildWorkflowDetailData(
 			octokit,
 			ownerParam,
@@ -96,7 +106,8 @@ export const load: PageServerLoad = async ({ locals, url, params }) => {
 			detailData,
 			owner: ownerParam,
 			repo: repoParam,
-			hasMistralKey
+			hasMistralKey,
+			aiModelLabel
 		};
 	} catch (e: unknown) {
 		if (isGitHubUnauthorizedError(e)) {

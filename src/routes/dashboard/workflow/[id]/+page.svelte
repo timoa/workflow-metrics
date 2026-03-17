@@ -12,7 +12,7 @@
 	import { keyWithIndex } from '$lib/components/dashboard/list-keys';
 
 	let { data }: { data: PageData } = $props();
-	let { detailData, owner, repo, hasMistralKey } = $derived(data);
+	let { detailData, owner, repo, hasMistralKey, aiModelLabel } = $derived(data);
 	let metrics = $derived(detailData.metrics);
 
 	let showOptimize = $state(false);
@@ -82,6 +82,7 @@
 			{metrics}
 			{owner}
 			{repo}
+			{aiModelLabel}
 			onclose={() => (showOptimize = false)}
 		/>
 	{/if}
