@@ -1,3 +1,15 @@
+## [0.1.19](https://github.com/timoa/workflow-metrics/compare/v0.1.18...v0.1.19) (2026-03-17)
+
+
+### Bug Fixes
+
+* **config:** add config file to choose the Mistral model [#110](https://github.com/timoa/workflow-metrics/issues/110) ([7558e21](https://github.com/timoa/workflow-metrics/commit/7558e21ca1461941079f09fa809611188daabf5e))
+* **config:** fix nitpick comments from CodeRabbit [#110](https://github.com/timoa/workflow-metrics/issues/110) ([a74251c](https://github.com/timoa/workflow-metrics/commit/a74251cda772491f93d7328767878429ba400f73))
+* **config:** fix tests and use Mistral Small 4 by default [#110](https://github.com/timoa/workflow-metrics/issues/110) ([52ab1e0](https://github.com/timoa/workflow-metrics/commit/52ab1e076e448eac43c48a2751c4686dee99aae3))
+* **config:** handling the case where local override file has invalid structure [#110](https://github.com/timoa/workflow-metrics/issues/110) ([1161deb](https://github.com/timoa/workflow-metrics/commit/1161debdba0cc14ea2c5b01f7a8407cb6c081732))
+* **deps:** fix dependency vulnerabilities ([4399afa](https://github.com/timoa/workflow-metrics/commit/4399afa5b90461585e000d6a185825dbc6c8fb80))
+* **tests:** fix tests on the app config [#110](https://github.com/timoa/workflow-metrics/issues/110) ([d83d7b0](https://github.com/timoa/workflow-metrics/commit/d83d7b0ce93f7f7ace33004464568e55396fba9a))
+
 ## [0.1.18](https://github.com/timoa/workflow-metrics/compare/v0.1.17...v0.1.18) (2026-03-11)
 
 
