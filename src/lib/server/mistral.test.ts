@@ -2,7 +2,9 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 // Mock the AI SDK before any imports
 vi.mock('@ai-sdk/mistral', () => ({
-	createMistral: vi.fn().mockReturnValue(vi.fn().mockReturnValue({ __model: true }))
+	createMistral: vi.fn().mockReturnValue(
+		vi.fn().mockImplementation((modelId: string) => ({ __model: true, __modelId: modelId }))
+	)
 }));
 
 vi.mock('ai', () => ({
@@ -206,6 +208,9 @@ jobs:
 				maxOutputTokens: 4096
 			})
 		);
+		expect(vi.mocked(generateText).mock.calls[0][0].model).toEqual(
+			expect.objectContaining({ __modelId: 'mistral-large-latest' })
+		);
 	});
 });
 
@@ -317,6 +322,9 @@ jobs:
 				prompt: expect.stringContaining('Original YAML'),
 				maxOutputTokens: 4096
 			})
+		);
+		expect(vi.mocked(generateText).mock.calls[0][0].model).toEqual(
+			expect.objectContaining({ __modelId: 'mistral-large-latest' })
 		);
 	});
 });

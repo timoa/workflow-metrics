@@ -21,10 +21,11 @@
 		metrics: WorkflowMetrics;
 		owner: string;
 		repo: string;
+		aiModelLabel: string;
 		onclose: () => void;
 	}
 
-	let { workflowId, workflowName, workflowPath, metrics, owner, repo, onclose }: Props = $props();
+	let { workflowId, workflowName, workflowPath, metrics, owner, repo, aiModelLabel, onclose }: Props = $props();
 
 	let loading = $state(false);
 	let error = $state<string | null>(null);
@@ -34,12 +35,12 @@
 	const STEP_ORDER = ['checking-cache', 'fetching-yaml', 'ai-analyzing', 'saving'] as const;
 	type StepId = typeof STEP_ORDER[number];
 
-	const STEP_LABELS: Record<StepId, string> = {
+	const STEP_LABELS = $derived<Record<StepId, string>>({
 		'checking-cache': 'Checking optimization cache',
-		'fetching-yaml':  'Fetching workflow YAML',
-		'ai-analyzing':   'Analyzing with Mistral AI',
-		'saving':         'Saving recommendations'
-	};
+		'fetching-yaml': 'Fetching workflow YAML',
+		'ai-analyzing': `Analyzing with ${aiModelLabel}`,
+		'saving': 'Saving recommendations'
+	});
 
 	// Messages cycled client-side during the long AI analysis phase
 	const AI_MESSAGES = [
@@ -321,7 +322,7 @@
 			</div>
 			<div>
 				<h3 class="text-sm font-semibold text-foreground">AI Optimization</h3>
-				<p class="text-xs text-muted-foreground">Powered by Mistral AI · {workflowName}</p>
+				<p class="text-xs text-muted-foreground">Powered by {aiModelLabel} · {workflowName}</p>
 			</div>
 		</div>
 		<div class="flex items-center gap-3">

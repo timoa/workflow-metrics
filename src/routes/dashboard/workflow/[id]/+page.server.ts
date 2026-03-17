@@ -1,6 +1,7 @@
 import { redirect, error } from '@sveltejs/kit';
 import { createOctokit, buildWorkflowDetailData, isGitHubUnauthorizedError } from '$lib/server/github';
 import { createSupabaseAdminClient } from '$lib/server/supabase';
+import { getAiOptimizationModelLabel } from '$lib/server/config/app-config';
 import {
 	getCachedWorkflowDetailRuns,
 	setCachedWorkflowDetailRuns
@@ -96,7 +97,8 @@ export const load: PageServerLoad = async ({ locals, url, params }) => {
 			detailData,
 			owner: ownerParam,
 			repo: repoParam,
-			hasMistralKey
+			hasMistralKey,
+			aiModelLabel: getAiOptimizationModelLabel()
 		};
 	} catch (e: unknown) {
 		if (isGitHubUnauthorizedError(e)) {
