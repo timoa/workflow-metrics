@@ -88,10 +88,53 @@ const AppConfigSchema = z
 		}
 	});
 
+const AppConfigOverrideSchema = z.object({
+	app: z
+		.object({
+			name: z.string().min(1).optional(),
+			version: z.number().int().positive().optional()
+		})
+		.partial()
+		.optional(),
+	features: z
+		.object({
+			aiOptimization: z.boolean().optional()
+		})
+		.partial()
+		.optional(),
+	aiOptimization: z
+		.object({
+			provider: z.enum(['mistral']).optional(),
+			defaultModel: z.string().min(1).optional(),
+			modelLabels: z.record(z.string().min(1), z.string().min(1)).optional(),
+			providers: z
+				.object({
+					mistral: z
+						.object({
+							models: z.array(z.string().min(1)).min(1).optional()
+						})
+						.partial()
+						.optional()
+				})
+				.partial()
+				.optional()
+		})
+		.partial()
+		.optional()
+});
+
 const localOverrideModules = import.meta.glob<{ default: AppConfigOverride }>('./app-config.local.ts', {
 	eager: true
 });
-const localOverride = localOverrideModules['./app-config.local.ts']?.default ?? {};
+const rawLocalOverride = localOverrideModules['./app-config.local.ts']?.default ?? {};
+const localOverrideResult = AppConfigOverrideSchema.safeParse(rawLocalOverride);
+if (!localOverrideResult.success) {
+	const issues = localOverrideResult.error.issues
+		.map((issue) => `${issue.path.join('.') || '<root>'}: ${issue.message}`)
+		.join('; ');
+	throw new Error(`Invalid app config override in ./app-config.local.ts: ${issues}`);
+}
+const localOverride: AppConfigOverride = localOverrideResult.data;
 
 function buildEnvOverrideConfig(): AppConfigOverride {
 	const override: AppConfigOverride = {};

@@ -64,6 +64,15 @@ export const load: PageServerLoad = async ({ locals, url, params }) => {
 	const octokit = createOctokit(connection.access_token);
 
 	try {
+		let aiModelLabel = 'AI';
+		if (hasMistralKey) {
+			try {
+				aiModelLabel = getAiOptimizationModelLabel();
+			} catch (e) {
+				console.warn('[workflow-detail] Could not resolve AI model label from config:', e);
+			}
+		}
+
 		const detailData = await buildWorkflowDetailData(
 			octokit,
 			ownerParam,
@@ -98,7 +107,7 @@ export const load: PageServerLoad = async ({ locals, url, params }) => {
 			owner: ownerParam,
 			repo: repoParam,
 			hasMistralKey,
-			aiModelLabel: getAiOptimizationModelLabel()
+			aiModelLabel
 		};
 	} catch (e: unknown) {
 		if (isGitHubUnauthorizedError(e)) {

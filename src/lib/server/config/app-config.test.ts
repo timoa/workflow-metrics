@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { defaultAppConfig } from './app-config';
 
 async function importFreshConfigModule(aiModelOverride?: string) {
 	vi.resetModules();
@@ -19,7 +20,7 @@ describe('app config', () => {
 	it('returns default AI optimization model when no override exists', async () => {
 		const config = await importFreshConfigModule();
 
-		expect(config.getAiOptimizationModel()).toBe('mistral-large-latest');
+		expect(config.getAiOptimizationModel()).toBe(defaultAppConfig.aiOptimization.defaultModel);
 	});
 
 	it('uses AI model from environment override', async () => {
