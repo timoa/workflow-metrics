@@ -60,7 +60,7 @@
 		"prettier-plugin-tailwindcss": "0.7.2",
 		"sharp": "0.34.5",
 		"svelte": "5.53.6",
-		"svelte-check": "4.4.4",
+		"svelte-check": "4.4.6",
 		"tailwind-merge": "3.5.0",
 		"tailwindcss": "4.2.1",
 		"tailwindcss-animate": "1.0.7",
