@@ -1,3 +1,10 @@
+## [0.1.20](https://github.com/timoa/workflow-metrics/compare/v0.1.19...v0.1.20) (2026-05-05)
+
+
+### Bug Fixes
+
+* **deps:** fix high vulnerabilities ([bc3f228](https://github.com/timoa/workflow-metrics/commit/bc3f2289d8356298043db764c8e7cfd5e6cab665))
+
 ## [0.1.19](https://github.com/timoa/workflow-metrics/compare/v0.1.18...v0.1.19) (2026-03-17)
 
 
