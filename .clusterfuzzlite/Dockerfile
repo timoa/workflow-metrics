@@ -1,4 +1,4 @@
-FROM gcr.io/oss-fuzz-base/base-builder-javascript@sha256:26c2e9a9333b120f48c561441976e7de16f194f10e41e18e4798e1911f051c24
+FROM gcr.io/oss-fuzz-base/base-builder-javascript@sha256:b988c7e228df699bcfaad34f5853dd5f0a21c5476782516d8b00bab8bc46b724
 
 COPY . $SRC/workflow-metrics
 WORKDIR $SRC/workflow-metrics
