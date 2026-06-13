@@ -1,6 +1,7 @@
 overrides:
   cookie: 1.1.1
   devalue: 5.8.1
+  esbuild: 0.28.1
   flatted: 3.4.2
   lodash-es: 4.18.1
   picomatch: 2.3.2
