@@ -37,7 +37,7 @@
 		"dompurify": "3.3.2",
 		"highlight.js": "11.11.1",
 		"layerchart": "1.0.13",
-		"marked": "17.0.3",
+		"marked": "17.0.6",
 		"yaml": "2.8.2",
 		"zod": "4.3.6"
 	},
