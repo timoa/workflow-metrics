@@ -5,7 +5,8 @@ overrides:
   flatted: 3.4.2
   lodash-es: 4.18.1
   picomatch: 2.3.2
-  undici: 7.24.0
+  undici: 7.28.0
+  ws: 8.21.0
   zod: 4.3.6
 
 auditConfig:
