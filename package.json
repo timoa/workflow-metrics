@@ -16,7 +16,7 @@
 		"dev": "vite dev",
 		"build": "vite build",
 		"preview": "vite preview",
-		"deploy": "pnpm run build && pnpm exec wrangler pages deploy .svelte-kit/cloudflare --project-name=workflow-metrics",
+		"start": "node build/index.js",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
@@ -43,7 +43,7 @@
 	},
 	"devDependencies": {
 		"@eslint/js": "9.39.3",
-		"@sveltejs/adapter-cloudflare": "7.2.8",
+		"@sveltejs/adapter-node": "5.5.7",
 		"@sveltejs/kit": "^2.60.1",
 		"@sveltejs/vite-plugin-svelte": "6.2.4",
 		"@tailwindcss/vite": "4.3.0",
@@ -68,7 +68,6 @@
 		"typescript": "5.9.3",
 		"typescript-eslint": "8.56.1",
 		"vite": "6.4.3",
-		"vitest": "3.2.6",
-		"wrangler": "4.69.0"
+		"vitest": "3.2.6"
 	}
 }

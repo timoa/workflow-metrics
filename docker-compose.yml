@@ -1,0 +1,37 @@
+# Base compose for workflow-metrics.
+#
+# This file ships the **app** service only. Postgres is intentionally not here
+# so the same image works against a managed Postgres / K8s service / an existing
+# instance — point `DATABASE_URL` in `.env` at it and `docker compose up`.
+#
+# Two ways to run:
+#
+#   1. Bundled Postgres (dev default) — bring in the overlay that adds one:
+#
+#        docker compose -f docker-compose.yml -f docker-compose.postgres.yml up
+#
+#   2. External Postgres (managed, K8s, shared cluster) — point DATABASE_URL
+#      in .env at your instance, then just:
+#
+#        docker compose -f docker-compose.yml up
+#
+# See `.env.example` for the matching DATABASE_URL forms.
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: workflow-metrics:local
+    container_name: workflow-metrics-app
+    env_file:
+      - .env
+    environment:
+      # Ensure the runtime picks up the right interface and port even if the
+      # operator forgets to export them in .env.
+      HOST: ${HOST:-0.0.0.0}
+      PORT: ${PORT:-3000}
+      NODE_ENV: production
+    ports:
+      - "${PORT:-3000}:3000"
+    restart: unless-stopped

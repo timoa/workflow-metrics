@@ -1,0 +1,43 @@
+# Overlay that adds a bundled Postgres to the base compose.
+#
+# Use ONLY when you want Postgres to run alongside the app container (local
+# dev, CI smoke tests, single-node deploys). The base docker-compose.yml
+# stays Postgres-free so external-DB users don't pay for an unused service.
+#
+# Usage:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.postgres.yml up
+#
+# Requires Docker Compose v2.20+ for the `include:` directive.
+
+include:
+  - path: ./docker-compose.yml
+
+services:
+  app:
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: workflow-metrics-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-workflow_metrics}
+      POSTGRES_USER: ${POSTGRES_USER:-workflow_metrics}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set when using bundled mode}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "$${POSTGRES_USER:-workflow_metrics}" -d "$${POSTGRES_DB:-workflow_metrics}"
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+volumes:
+  pgdata:
+    name: workflow-metrics-pgdata
