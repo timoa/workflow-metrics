@@ -1,3 +1,11 @@
+## [0.1.24](https://github.com/timoa/workflow-metrics/compare/v0.1.23...v0.1.24) (2026-06-28)
+
+
+### Bug Fixes
+
+* **deps:** address TIM-44 moderate vulnerabilities from TIM-37 audit ([73c3db9](https://github.com/timoa/workflow-metrics/commit/73c3db95736b09c00a0c4a8082842e723472e1c5))
+* **deps:** scope brace-expansion override to minimatch paths ([d96c63d](https://github.com/timoa/workflow-metrics/commit/d96c63d2137b4b6a27d78deb07cf076c3585548d))
+
 ## [0.1.23](https://github.com/timoa/workflow-metrics/compare/v0.1.22...v0.1.23) (2026-06-22)
 
 

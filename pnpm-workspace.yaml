@@ -3,8 +3,13 @@ overrides:
   devalue: 5.8.1
   esbuild: 0.28.1
   flatted: 3.4.2
+  js-yaml: ^4.2.0
   lodash-es: 4.18.1
+  'minimatch@3>brace-expansion': 1.1.13
+  'minimatch@9>brace-expansion': 2.0.3
   picomatch: 2.3.2
+  postcss: ^8.5.10
+  'postcss-load-config>yaml': 1.10.3
   undici: 7.28.0
   ws: 8.21.0
   zod: 4.3.6
