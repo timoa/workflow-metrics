@@ -1,0 +1,88 @@
+# Build artefacts
+node_modules
+.pnpm-store
+build
+.svelte-kit
+.svelte-kit-test
+.output
+.vercel
+.netlify
+.wrangler
+
+# Vite caches
+.vite
+.cache
+*.tsbuildinfo
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+# Tests, coverage, editor noise
+coverage
+coverage-*
+*.lcov
+.nyc_output
+.idea
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
+*.swo
+*~
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Logs / temp
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+tmp
+temp
+*.tmp
+*.temp
+
+# Env / secrets — must never be baked into the image
+.env
+.env.*
+!.env.example
+!.env.test
+
+# Source control
+.git
+.gitignore
+.github
+.worktrees
+.gitattributes
+
+# Project-local supabase / docker artefacts
+supabase/.temp
+supabase/.env
+supabase/.env.*
+docker-compose*.yml
+Dockerfile
+.dockerignore
+
+# Docs that don't belong in the runtime image (kept locally only)
+README.md
+CHANGELOG.md
+CONTRIBUTING.md
+LICENSE
+SECURITY.md
+osv-scanner.toml
+.releaserc.cjs
+.cursor
+.clusterfuzzlite
+
+# Test fixtures / mocks
+src/mocks
+*.test.ts
+*.test.js
+*.spec.ts
+*.spec.js
+__tests__
+tests
