@@ -169,7 +169,7 @@ Deployment to [Cloudflare Pages](https://pages.cloudflare.com/) is triggered aut
 
 - **Framework**: Svelte 5 + SvelteKit 2
 - **Styling**: Tailwind CSS 4
-- **UI Components**: [bits-ui](https://www.bits-ui.com/), [lucide-svelte](https://lucide.dev/), [layerchart](https://layerchart.com/)
+- **UI Components**: [bits-ui](https://www.bits-ui.com/), [lucide-svelte](https://lucide.dev/)
 - **Auth & Database**: [Supabase](https://supabase.com/) (GitHub OAuth + PostgreSQL)
 - **GitHub API**: [@octokit/rest](https://github.com/octokit/rest.js)
 - **AI**: [Vercel AI SDK](https://sdk.vercel.ai/) + [@ai-sdk/mistral](https://sdk.vercel.ai/providers/ai-sdk-providers/mistral)
