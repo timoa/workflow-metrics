@@ -30,5 +30,8 @@ export const GET: RequestHandler = async ({ locals }) => {
 		);
 	}
 
-	throw redirect(302, `https://github.com/apps/${appSlug}/installations/new`);
+	// SvelteKit 3 rejects external redirects unless the origin is explicitly allowed.
+	throw redirect(302, `https://github.com/apps/${appSlug}/installations/new`, {
+		external: ['https://github.com']
+	});
 };

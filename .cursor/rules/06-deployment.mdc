@@ -59,7 +59,7 @@ pnpm build          # Verify build succeeds
 
 - **Build command**: `pnpm build`
 - **Build output directory**: `.svelte-kit/cloudflare`
-- **Node.js version**: 20.x
+- **Node.js version**: 24.14.0 (SvelteKit 3 requires Node >= 22.17)
 - **Root directory**: `/` (repo root)
 
 ## Supabase Configuration
