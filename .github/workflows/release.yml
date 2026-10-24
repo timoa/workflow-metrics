@@ -16,12 +16,15 @@ jobs:
         uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: block
+          # nodejs.org is actions/setup-node's fallback download host — without it a
+          # transient failure of the GitHub-hosted path fails the job outright.
           allowed-endpoints: >
             api.github.com:443
             cli.codecov.io:443
             github.com:443
             ingest.codecov.io:443
             keybase.io:443
+            nodejs.org:443
             o26192.ingest.us.sentry.io:443
             registry.npmjs.org:443
             release-assets.githubusercontent.com:443
@@ -92,12 +95,15 @@ jobs:
         uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: block
+          # nodejs.org is actions/setup-node's fallback download host — without it a
+          # transient failure of the GitHub-hosted path fails the job outright.
           allowed-endpoints: >
             api.github.com:443
             cli.codecov.io:443
             github.com:443
             ingest.codecov.io:443
             keybase.io:443
+            nodejs.org:443
             o26192.ingest.us.sentry.io:443
             registry.npmjs.org:443
             release-assets.githubusercontent.com:443
