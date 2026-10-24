@@ -14,22 +14,25 @@ import {
 } from './github';
 import type { GitHubWorkflow, GitHubWorkflowRun, GitHubJob } from '$lib/types/github';
 
-// Mock Octokit
+// Mock Octokit — Vitest 4 constructs the instance when the mock is called with
+// `new`, so the implementation must use the `function` keyword, not an arrow.
 vi.mock('@octokit/rest', () => ({
-	Octokit: vi.fn().mockImplementation(() => ({
-		rest: {
-			actions: {
-				listRepoWorkflows: vi.fn(),
-				listWorkflowRunsForRepo: vi.fn(),
-				listWorkflowRuns: vi.fn(),
-				listJobsForWorkflowRun: vi.fn()
-			},
-			repos: {
-				listCommits: vi.fn(),
-				getContent: vi.fn()
+	Octokit: vi.fn().mockImplementation(function () {
+		return {
+			rest: {
+				actions: {
+					listRepoWorkflows: vi.fn(),
+					listWorkflowRunsForRepo: vi.fn(),
+					listWorkflowRuns: vi.fn(),
+					listJobsForWorkflowRun: vi.fn()
+				},
+				repos: {
+					listCommits: vi.fn(),
+					getContent: vi.fn()
+				}
 			}
-		}
-	}))
+		};
+	})
 }));
 
 describe('createOctokit', () => {

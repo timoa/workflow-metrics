@@ -1,5 +1,5 @@
 import { redirect } from '@sveltejs/kit';
-import { env } from '$env/dynamic/public';
+import { PUBLIC_APP_URL } from '$app/env/public';
 import type { RequestHandler } from './$types';
 
 /** Allow only same-origin paths (no protocol-relative or external URLs). */
@@ -20,7 +20,7 @@ export const GET: RequestHandler = async ({ url, locals, cookies }) => {
 		url.hostname === 'localhost' || url.hostname === '127.0.0.1';
 	const baseUrl = isLocalhost
 		? url.origin
-		: (env.PUBLIC_APP_URL?.replace(/\/$/, '') ?? url.origin);
+		: (PUBLIC_APP_URL?.replace(/\/$/, '') ?? url.origin);
 	const redirectTo = `${baseUrl}/auth/callback`;
 
 	if (nextParam) {

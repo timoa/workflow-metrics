@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { browser } from '$app/environment';
+	import { browser } from '$app/env';
 	import { fade } from 'svelte/transition';
 	import hljs from 'highlight.js/lib/core';
 	import yaml from 'highlight.js/lib/languages/yaml';

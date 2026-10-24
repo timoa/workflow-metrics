@@ -1,4 +1,4 @@
-import { env } from '$env/dynamic/private';
+import { AI_OPTIMIZATION_MODEL } from '$app/env/private';
 import { z } from 'zod';
 
 export type AIProviderId = 'mistral';
@@ -147,9 +147,9 @@ const localOverride: AppConfigOverride = localOverrideResult.data;
 function buildEnvOverrideConfig(): AppConfigOverride {
 	const override: AppConfigOverride = {};
 
-	if (env.AI_OPTIMIZATION_MODEL) {
+	if (AI_OPTIMIZATION_MODEL) {
 		override.aiOptimization = {
-			defaultModel: env.AI_OPTIMIZATION_MODEL
+			defaultModel: AI_OPTIMIZATION_MODEL
 		};
 	}
 

@@ -135,7 +135,7 @@ async function processFavicons() {
     console.log('  <meta name="theme-color" content="#ffffff">');
     console.log('');
   } catch (error) {
-    console.error('❌ Error processing favicons:', error.message);
+    console.error('❌ Error processing favicons:', error instanceof Error ? error.message : error);
     process.exit(1);
   }
 }

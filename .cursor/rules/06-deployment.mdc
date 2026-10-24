@@ -1,6 +1,6 @@
 ---
 description: Cloudflare Pages deployment, environment variables, and wrangler configuration
-globs: ["src/**", "wrangler.toml", "svelte.config.js", "vite.config.ts"]
+globs: ["src/**", "wrangler.toml", "kit.config.ts", "vite.config.ts"]
 alwaysApply: false
 ---
 
@@ -8,7 +8,7 @@ alwaysApply: false
 
 ## Adapter
 
-Use `@sveltejs/adapter-cloudflare` – already configured in `svelte.config.js`. Do not switch adapters.
+Use `@sveltejs/adapter-cloudflare` – already configured in `kit.config.ts` (SvelteKit 3 moved the adapter out of `svelte.config.js`). Do not switch adapters.
 
 ## Environment Variables
 
@@ -17,6 +17,11 @@ Use `@sveltejs/adapter-cloudflare` – already configured in `svelte.config.js`.
 | `PUBLIC_SUPABASE_URL` | Public | Cloudflare Pages dashboard → Environment variables |
 | `PUBLIC_SUPABASE_ANON_KEY` | Public | Cloudflare Pages dashboard |
 | `SUPABASE_SERVICE_ROLE_KEY` | Secret | Cloudflare Pages dashboard → Encrypted |
+
+Every variable must also be declared in `src/env.ts` (SvelteKit 3 requires explicit
+declarations; undeclared variables are not exposed to the app). Mark a variable
+`public: true` to expose it through `$app/env/public`, and add a validator that
+returns the value unchanged to make it optional.
 
 - **Never** commit `.env` files with real secrets to the repository
 - Provide a `.env.example` with placeholder values and document all variables in the README

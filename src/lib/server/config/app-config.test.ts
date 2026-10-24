@@ -1,17 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 async function importFreshConfigModule(aiModelOverride?: string) {
 	vi.resetModules();
-	vi.doMock('$env/dynamic/private', () => ({
-		env: {
-			AI_OPTIMIZATION_MODEL: aiModelOverride
-		}
+	vi.doMock('$app/env/private', () => ({
+		AI_OPTIMIZATION_MODEL: aiModelOverride
 	}));
 	return import('./app-config');
 }
 
 describe('app config', () => {
 	afterEach(async () => {
-		vi.doUnmock('$env/dynamic/private');
+		vi.doUnmock('$app/env/private');
 		vi.resetModules();
 	});
 
