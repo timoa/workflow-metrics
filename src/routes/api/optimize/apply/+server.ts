@@ -1,5 +1,5 @@
 import { error, json } from '@sveltejs/kit';
-import { env } from '$env/dynamic/private';
+import { GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY } from '$app/env/private';
 import { generateOptimizedYaml } from '$lib/server/mistral';
 import { getInstallationForOwner, getInstallationToken } from '$lib/server/github-app';
 import { Octokit } from '@octokit/rest';
@@ -90,8 +90,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		throw error(400, 'Mistral API key not configured. Add it in Settings.');
 	}
 
-	const appId = env.GITHUB_APP_ID;
-	const privateKey = env.GITHUB_APP_PRIVATE_KEY;
+	const appId = GITHUB_APP_ID;
+	const privateKey = GITHUB_APP_PRIVATE_KEY;
 
 	if (!appId || !privateKey) {
 		throw error(

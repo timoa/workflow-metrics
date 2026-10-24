@@ -1,5 +1,5 @@
 import { redirect, fail } from '@sveltejs/kit';
-import { env } from '$env/dynamic/private';
+import { GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY, GITHUB_APP_SLUG } from '$app/env/private';
 import { generateAppJWT } from '$lib/server/github-app';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { PageServerLoad, Actions } from './$types';
@@ -164,9 +164,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 	const appSuccess = url.searchParams.get('appSuccess') === '1';
 	const appError = url.searchParams.get('appError') ?? null;
-	const appId = env.GITHUB_APP_ID;
-	const privateKey = env.GITHUB_APP_PRIVATE_KEY;
-	const hasGitHubApp = !!(appId && privateKey && env.GITHUB_APP_SLUG);
+	const appId = GITHUB_APP_ID;
+	const privateKey = GITHUB_APP_PRIVATE_KEY;
+	const hasGitHubApp = !!(appId && privateKey && GITHUB_APP_SLUG);
 
 	// Auto-sync installations from GitHub on every load so the list reflects add/remove on GitHub
 	if (hasGitHubApp && appId && privateKey) {
@@ -240,8 +240,8 @@ export const actions: Actions = {
 		const { user } = await locals.safeGetSession();
 		if (!user) return fail(401, { error: 'Unauthorized' });
 
-		const appId = env.GITHUB_APP_ID;
-		const privateKey = env.GITHUB_APP_PRIVATE_KEY;
+		const appId = GITHUB_APP_ID;
+		const privateKey = GITHUB_APP_PRIVATE_KEY;
 		if (!appId || !privateKey) {
 			return fail(500, { syncError: 'GitHub App is not configured on this server.' });
 		}

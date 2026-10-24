@@ -1,5 +1,5 @@
 import { redirect, error } from '@sveltejs/kit';
-import { env } from '$env/dynamic/private';
+import { GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY } from '$app/env/private';
 import { fetchInstallationDetails } from '$lib/server/github-app';
 import type { RequestHandler } from './$types';
 
@@ -31,8 +31,8 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		throw redirect(303, '/settings?appError=invalid_installation_id');
 	}
 
-	const appId = env.GITHUB_APP_ID;
-	const privateKey = env.GITHUB_APP_PRIVATE_KEY;
+	const appId = GITHUB_APP_ID;
+	const privateKey = GITHUB_APP_PRIVATE_KEY;
 
 	if (!appId || !privateKey) {
 		throw error(500, 'GitHub App credentials are not configured (GITHUB_APP_ID / GITHUB_APP_PRIVATE_KEY).');

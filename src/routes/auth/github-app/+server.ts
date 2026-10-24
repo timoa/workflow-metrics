@@ -1,5 +1,5 @@
 import { redirect, error } from '@sveltejs/kit';
-import { env } from '$env/dynamic/private';
+import { GITHUB_APP_SLUG } from '$app/env/private';
 import type { RequestHandler } from './$types';
 
 /**
@@ -22,7 +22,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 	const { user } = await locals.safeGetSession();
 	if (!user) throw redirect(303, '/auth/login');
 
-	const appSlug = env.GITHUB_APP_SLUG;
+	const appSlug = GITHUB_APP_SLUG;
 	if (!appSlug) {
 		throw error(
 			500,
@@ -30,5 +30,8 @@ export const GET: RequestHandler = async ({ locals }) => {
 		);
 	}
 
-	throw redirect(302, `https://github.com/apps/${appSlug}/installations/new`);
+	// SvelteKit 3 rejects external redirects unless the origin is explicitly allowed.
+	throw redirect(302, `https://github.com/apps/${appSlug}/installations/new`, {
+		external: ['https://github.com']
+	});
 };

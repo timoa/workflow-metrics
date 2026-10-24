@@ -1,4 +1,5 @@
 import { error, json } from '@sveltejs/kit';
+import { waitUntil } from 'cloudflare:workers';
 import {
 	createOctokit,
 	buildDashboardData,
@@ -26,7 +27,7 @@ import type { RequestHandler } from './$types';
  *   events via SSE so the UI can show a live progress bar; otherwise returns JSON
  *   once all data has been fetched.
  */
-export const GET: RequestHandler = async ({ url, locals, request, platform }) => {
+export const GET: RequestHandler = async ({ url, locals, request }) => {
 	const { user } = await locals.safeGetSession();
 	if (!user) throw error(401, 'Unauthorized');
 
@@ -145,11 +146,7 @@ export const GET: RequestHandler = async ({ url, locals, request, platform }) =>
 		})();
 
 		// On Cloudflare Workers, use waitUntil so the worker stays alive for the background task
-		const ctx = platform?.env ? (platform as { context?: { waitUntil?: (p: Promise<unknown>) => void } }).context : undefined;
-		if (ctx?.waitUntil) {
-			ctx.waitUntil(refreshTask);
-		}
-		// In Node.js the promise runs fire-and-forget
+		waitUntil(refreshTask);
 
 		return staleResponseData!;
 	}

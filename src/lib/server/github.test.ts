@@ -14,22 +14,25 @@ import {
 } from './github';
 import type { GitHubWorkflow, GitHubWorkflowRun, GitHubJob } from '$lib/types/github';
 
-// Mock Octokit
+// Mock Octokit — Vitest 4 constructs the instance when the mock is called with
+// `new`, so the implementation must use the `function` keyword, not an arrow.
 vi.mock('@octokit/rest', () => ({
-	Octokit: vi.fn().mockImplementation(() => ({
-		rest: {
-			actions: {
-				listRepoWorkflows: vi.fn(),
-				listWorkflowRunsForRepo: vi.fn(),
-				listWorkflowRuns: vi.fn(),
-				listJobsForWorkflowRun: vi.fn()
-			},
-			repos: {
-				listCommits: vi.fn(),
-				getContent: vi.fn()
+	Octokit: vi.fn().mockImplementation(function () {
+		return {
+			rest: {
+				actions: {
+					listRepoWorkflows: vi.fn(),
+					listWorkflowRunsForRepo: vi.fn(),
+					listWorkflowRuns: vi.fn(),
+					listJobsForWorkflowRun: vi.fn()
+				},
+				repos: {
+					listCommits: vi.fn(),
+					getContent: vi.fn()
+				}
 			}
-		}
-	}))
+		};
+	})
 }));
 
 describe('createOctokit', () => {
@@ -453,6 +456,188 @@ describe('buildDashboardData', () => {
 
 		await buildDashboardData(octokit, 'owner', 'repo', { onRunsFetched, days: 7 });
 		expect(onRunsFetched).toHaveBeenCalledWith(mockRuns);
+	});
+
+	it('detects the runner type and billing multiplier from the workflow YAML', async () => {
+		const octokit = createOctokit('test-token');
+
+		const workflowFiles: Record<string, string> = {
+			'.github/workflows/ubuntu.yml': [
+				'name: Ubuntu',
+				'jobs:',
+				'  build:',
+				'    runs-on: ubuntu-latest'
+			].join('\n'),
+			'.github/workflows/windows.yml': [
+				'name: Windows',
+				'jobs:',
+				'  test:',
+				'    runs-on: [self-hosted, windows-latest]'
+			].join('\n'),
+			'.github/workflows/mac.yml': [
+				'name: Mac',
+				'jobs:',
+				'  build:',
+				'    runs-on: macos-latest'
+			].join('\n'),
+			'.github/workflows/mixed.yml': [
+				'name: Mixed',
+				'jobs:',
+				'  a:',
+				'    runs-on: ubuntu-latest',
+				'  b:',
+				'    runs-on: macos-latest'
+			].join('\n'),
+			'.github/workflows/default.yml': [
+				'name: Default',
+				'jobs:',
+				'  build:',
+				'    steps:',
+				'      - run: echo hi'
+			].join('\n'),
+			'.github/workflows/templates.yml': [
+				'name: Templates',
+				'jobs:',
+				'  matrix:',
+				'    runs-on: ${{ matrix.os }}',
+				'  matrixArray:',
+				"    runs-on: ['${{ matrix.os }}']",
+				'  reusable:',
+				'    uses: ./.github/workflows/_shared.yml',
+				'  broken: "not-an-object"',
+				'  weird:',
+				'    runs-on: 42'
+			].join('\n'),
+			'.github/workflows/notafile.yml': 'name: Not a file',
+			'.github/workflows/invalid.yml': 'jobs: [unclosed'
+		};
+
+		const mockWorkflows: GitHubWorkflow[] = Object.keys(workflowFiles).map((path, i) => ({
+			id: i + 1,
+			name: path.split('/').pop()!.replace('.yml', ''),
+			path,
+			state: 'active'
+		})) as GitHubWorkflow[];
+
+		const now = Date.now();
+		const mockRuns: GitHubWorkflowRun[] = mockWorkflows.map((w, i) => ({
+			id: i + 1,
+			workflow_id: w.id,
+			status: 'completed',
+			conclusion: 'success',
+			updated_at: new Date(now).toISOString(),
+			run_started_at: new Date(now - 60_000).toISOString()
+		})) as GitHubWorkflowRun[];
+
+		vi.mocked(octokit.rest.actions.listRepoWorkflows).mockResolvedValue({
+			data: { workflows: mockWorkflows }
+		} as never);
+		vi.mocked(octokit.rest.actions.listWorkflowRunsForRepo).mockResolvedValue({
+			data: { workflow_runs: mockRuns, total_count: mockRuns.length }
+		} as never);
+		vi.mocked(octokit.rest.repos.listCommits).mockResolvedValue({ data: [] } as never);
+		vi.mocked(octokit.rest.repos.getContent).mockImplementation((async (params: { path: string }) => {
+			if (params.path.endsWith('notafile.yml')) return { data: { type: 'dir' } };
+			return { data: { type: 'file', content: btoa(workflowFiles[params.path] ?? '') } };
+		}) as never);
+
+		const result = await buildDashboardData(octokit, 'owner', 'repo', { days: 7 });
+		const byName = new Map(result.minutesByWorkflow.map((w) => [w.workflowName, w]));
+
+		// Linux x1, Windows x2, macOS x10 (see getRunnerMultiplier)
+		expect(byName.get('ubuntu')?.runnerType).toBe('ubuntu');
+		expect(byName.get('ubuntu')?.runnerDetected).toBe(true);
+		expect(byName.get('ubuntu')?.billableMinutes).toBe(1);
+		expect(byName.get('windows')?.runnerType).toBe('windows');
+		expect(byName.get('windows')?.billableMinutes).toBe(2);
+		expect(byName.get('mac')?.runnerType).toBe('macos');
+		expect(byName.get('mac')?.billableMinutes).toBe(10);
+		// two different OSes in one workflow -> mixed, averaged multiplier
+		expect(byName.get('mixed')?.runnerType).toBe('mixed');
+		expect(byName.get('mixed')?.billableMinutes).toBe(6);
+		// no `runs-on` -> GitHub defaults to ubuntu-latest
+		expect(byName.get('default')?.runnerType).toBe('ubuntu');
+		// template expressions, reusable workflows and malformed jobs are all skipped
+		expect(byName.get('templates')?.runnerType).toBe('unknown');
+		expect(byName.get('templates')?.runnerDetected).toBe(false);
+		// a non-file response and unparseable YAML both fall back to unknown
+		expect(byName.get('notafile')?.runnerType).toBe('unknown');
+		expect(byName.get('invalid')?.runnerType).toBe('unknown');
+	});
+
+	it('computes DORA metrics and the run trend across run conclusions', async () => {
+		const octokit = createOctokit('test-token');
+		const now = Date.now();
+		const at = (offsetMs: number) => new Date(now + offsetMs).toISOString();
+
+		const mockWorkflows: GitHubWorkflow[] = [
+			{ id: 1, name: 'CI', path: '.github/workflows/ci.yml', state: 'active' } as GitHubWorkflow
+		];
+		const mockRuns: GitHubWorkflowRun[] = [
+			{
+				id: 1,
+				workflow_id: 1,
+				status: 'completed',
+				conclusion: 'failure',
+				created_at: at(-4 * 60_000),
+				updated_at: at(-3 * 60_000),
+				run_started_at: at(-4 * 60_000)
+			} as GitHubWorkflowRun,
+			{
+				id: 2,
+				workflow_id: 1,
+				status: 'completed',
+				conclusion: 'success',
+				created_at: at(-3 * 60_000),
+				updated_at: at(-2 * 60_000),
+				run_started_at: at(-3 * 60_000),
+				head_commit: { timestamp: at(-3 * 60_000) }
+			} as GitHubWorkflowRun,
+			{
+				id: 3,
+				workflow_id: 1,
+				status: 'completed',
+				conclusion: 'cancelled',
+				created_at: at(-2 * 60_000),
+				updated_at: at(-60_000),
+				run_started_at: at(-2 * 60_000)
+			} as GitHubWorkflowRun,
+			{
+				id: 4,
+				workflow_id: 1,
+				status: 'completed',
+				conclusion: 'skipped',
+				created_at: at(-60_000),
+				updated_at: at(-30_000),
+				run_started_at: at(-60_000)
+			} as GitHubWorkflowRun
+		];
+
+		vi.mocked(octokit.rest.actions.listRepoWorkflows).mockResolvedValue({
+			data: { workflows: mockWorkflows }
+		} as never);
+		vi.mocked(octokit.rest.actions.listWorkflowRunsForRepo).mockResolvedValue({
+			data: { workflow_runs: mockRuns, total_count: mockRuns.length }
+		} as never);
+		vi.mocked(octokit.rest.repos.listCommits).mockResolvedValue({ data: [] } as never);
+		vi.mocked(octokit.rest.repos.getContent).mockResolvedValue({
+			data: { type: 'file', content: 'bmFtZTogQ0k=' }
+		} as never);
+
+		const result = await buildDashboardData(octokit, 'owner', 'repo', {
+			days: 7,
+			doraWorkflowIds: [1]
+		});
+
+		const dora = result.dora!;
+		// lead time comes from the commit timestamp when the API provides one
+		expect(dora.leadTimeFromCommit).toBe(true);
+		// a failure followed by a success is a 1 minute mean time to recovery
+		expect(dora.meanTimeToRecoveryMs).toBe(60_000);
+		expect(dora.changeFailureRate).toBe(50);
+
+		const today = result.runTrend.find((p) => p.date === new Date(now).toISOString().slice(0, 10));
+		expect(today).toMatchObject({ success: 1, failure: 1, cancelled: 1, skipped: 1, total: 4 });
 	});
 });
 

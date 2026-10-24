@@ -1,6 +1,5 @@
 import { createSupabaseServerClient } from '$lib/server/supabase';
-import type { Handle } from '@sveltejs/kit';
-import { sequence } from '@sveltejs/kit/hooks';
+import { sequence, type Handle } from '@sveltejs/kit/hooks';
 
 const supabaseHandle: Handle = async ({ event, resolve }) => {
 	event.locals.supabase = createSupabaseServerClient(event);
