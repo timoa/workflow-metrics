@@ -15,10 +15,7 @@ export default defineConfig({
 			thresholds: {
 				lines: 80,
 				functions: 80,
-				// Vitest 4 replaced v8-to-istanbul with AST-based V8 remapping, which counts
-				// 466 branches instead of 382 — the old 73.82% was inflated. Real branch
-				// coverage is 63.51% with the same 148 tests, so the gate is re-baselined.
-				branches: 60,
+				branches: 70,
 				statements: 80
 			},
 			include: [
