@@ -1,3 +1,12 @@
+## [0.1.25](https://github.com/timoa/workflow-metrics/compare/v0.1.24...v0.1.25) (2026-10-24)
+
+
+### Bug Fixes
+
+* **auth:** allow external redirects required by SvelteKit 3 ([6a06b14](https://github.com/timoa/workflow-metrics/commit/6a06b14e5a7ac2f7bb7af13f8d2a84c9867e4a62))
+* **deps:** clear 32 high/critical advisories found by TIM-450 audit ([9fcf8da](https://github.com/timoa/workflow-metrics/commit/9fcf8da7db430892a76252bcda65ec7cc185b7b5))
+* **deps:** patch 10 advisories (2 critical tinypool, high zod/undici, SvelteKit 3, Vitest 4) ([722a90a](https://github.com/timoa/workflow-metrics/commit/722a90acbf3c48831c6b915ae9ce7d0fd4e1005e))
+
 ## [0.1.24](https://github.com/timoa/workflow-metrics/compare/v0.1.23...v0.1.24) (2026-06-28)
 
 
