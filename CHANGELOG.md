@@ -1,3 +1,10 @@
+## [0.1.26](https://github.com/timoa/workflow-metrics/compare/v0.1.25...v0.1.26) (2026-10-25)
+
+
+### Bug Fixes
+
+* **deps:** update dependency @ai-sdk/mistral to v3.0.70 ([#87](https://github.com/timoa/workflow-metrics/issues/87)) ([53f78fd](https://github.com/timoa/workflow-metrics/commit/53f78fda6704714d9879f9565983cc885438170e))
+
 ## [0.1.25](https://github.com/timoa/workflow-metrics/compare/v0.1.24...v0.1.25) (2026-10-24)
 
 
