@@ -32,8 +32,8 @@ importers:
   .:
     dependencies:
       '@ai-sdk/mistral':
-        specifier: 3.0.21
-        version: 3.0.21(zod@4.6.7)
+        specifier: 3.0.70
+        version: 3.0.70(zod@4.6.7)
       '@fortawesome/fontawesome-free':
         specifier: 7.2.0
         version: 7.2.0
@@ -155,8 +155,8 @@ packages:
     peerDependencies:
       zod: 4.6.7
 
-  '@ai-sdk/mistral@3.0.21':
-    resolution: {integrity: sha512-GhLRyfXghnKpt51t8ELU3cXwbCUcGOxZFUQFUZvNBt+y298PlOhaAK6pQtihfpNRGUycrdNotKwVajJm0a6uwg==}
+  '@ai-sdk/mistral@3.0.70':
+    resolution: {integrity: sha512-0vkrpXtF2rX4N5VmBIwt98VM3Ar3D7p1WIKATSUoQZ6Hu4BwXaN3GrmgEu6hQUMG+NE3spF6ptMCKyyYENj09w==}
     engines: {node: '>=18'}
     peerDependencies:
       zod: 4.6.7
@@ -166,6 +166,10 @@ packages:
     engines: {node: '>=18.17'}
     peerDependencies:
       zod: 4.6.7
+
+  '@ai-sdk/provider@3.0.18':
+    resolution: {integrity: sha512-IpefF5ssZVOZCD4Wu7zxt6PwZoGT2HLVjxpJ10Bjx6EAmRfLYJPjyrfxb0RYDlwvXnDb9nkQ7Do/oJVDuRFzew==}
+    engines: {node: '>=18'}
 
   '@ai-sdk/provider@3.0.19':
     resolution: {integrity: sha512-5lWq7zSfRaU5ylDESn3sDQjgGl2AI1vjZKO/6JY3aFW70ct4zcP1kN+ZUYOuTXr28fVsYbyu2YFhddLdIgQFZQ==}
@@ -2350,9 +2354,9 @@ snapshots:
       '@vercel/oidc': 3.1.0
       zod: 4.6.7
 
-  '@ai-sdk/mistral@3.0.21(zod@4.6.7)':
+  '@ai-sdk/mistral@3.0.70(zod@4.6.7)':
     dependencies:
-      '@ai-sdk/provider': 3.0.8
+      '@ai-sdk/provider': 3.0.18
       '@ai-sdk/provider-utils': 4.0.61(zod@4.6.7)
       zod: 4.6.7
 
@@ -2363,6 +2367,10 @@ snapshots:
       eventsource-parser: 3.1.1
       undici: 7.30.1
       zod: 4.6.7
+
+  '@ai-sdk/provider@3.0.18':
+    dependencies:
+      json-schema: 0.4.0
 
   '@ai-sdk/provider@3.0.19':
     dependencies:
