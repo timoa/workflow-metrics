@@ -1,3 +1,10 @@
+## [0.1.27](https://github.com/timoa/workflow-metrics/compare/v0.1.26...v0.1.27) (2026-11-05)
+
+
+### Bug Fixes
+
+* **deps:** pin minimatch >=11.0.1 and drop stale audit suppression ([#100](https://github.com/timoa/workflow-metrics/issues/100)) ([91c25be](https://github.com/timoa/workflow-metrics/commit/91c25be5146392136f249b0409ba27e375bbf8c2)), closes [hi#severity](https://github.com/hi/issues/severity)
+
 ## [0.1.26](https://github.com/timoa/workflow-metrics/compare/v0.1.25...v0.1.26) (2026-10-25)
 
 
