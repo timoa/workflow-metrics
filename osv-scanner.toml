@@ -8,3 +8,15 @@ which breaks the CommonJS require() calls inside vsce. The vulnerability is only
 exploitable when untrusted user input is passed directly as a glob pattern, which
 does not occur in this build tooling context.
 """
+
+[[IgnoredVulns]]
+id = "GHSA-fc5q-39xc-vjpf"
+reason = """
+picomatch ReDoS via single-branch repeated extglobs (CVE-2026-112366). Affects
+svelte-check>fdir>picomatch, a dev-only build tool that is not shipped to the
+deployed bundle. No fixed version exists: every release up to and including
+picomatch 4.0.7 (the latest) is affected, so there is no upgrade that clears
+the advisory. Exploitation requires an attacker-controlled glob pattern;
+svelte-check's patterns come from the repository's own tsconfig.json, never
+from user input. Tracked for upstream fix (micromatch/picomatch#194).
+"""
