@@ -1,3 +1,10 @@
+## [0.1.28](https://github.com/timoa/workflow-metrics/compare/v0.1.27...v0.1.28) (2026-11-27)
+
+
+### Bug Fixes
+
+* **deps:** patch SvelteKit/adapter-cloudflare advisories, unpin vulnerable yaml in fuzz build ([#103](https://github.com/timoa/workflow-metrics/issues/103)) ([d1859cc](https://github.com/timoa/workflow-metrics/commit/d1859cc33fe911270a2e81732d374eeba569d6c6))
+
 ## [0.1.27](https://github.com/timoa/workflow-metrics/compare/v0.1.26...v0.1.27) (2026-11-05)
 
 
